@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mis Cartones - El Bingazo</title>
+    <style>
+        :root { --primary: #ff9900; --bg: #0d0d13; --surface: #161622; --text: #ffffff; --success: #2ec4b6; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; text-align: center; }
+        
+        .container { max-width: 480px; margin: 0 auto; }
+        .header { background: var(--surface); padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #232335; }
+        .header h1 { margin: 0; font-size: 24px; color: var(--primary); letter-spacing: 1px; }
+        
+        /* Sección Login */
+        .card-login { background: var(--surface); padding: 25px 20px; border-radius: 16px; border: 1px solid #232335; box-shadow: 0 8px 24px rgba(0,0,0,0.3); margin-top: 30px; }
+        input { width: 100%; padding: 14px; font-size: 18px; text-transform: uppercase; border-radius: 8px; border: 2px solid #33334c; background: #07070a; color: #fff; text-align: center; font-weight: bold; margin-bottom: 15px; }
+        input:focus { border-color: var(--primary); outline: none; }
+        .btn-add { background: var(--primary); color: #000; border: none; padding: 14px; font-size: 16px; font-weight: bold; width: 100%; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+        .btn-add:active { transform: scale(0.98); }
+
+        /* Barra de Pestañas (Multi-cartón) */
+        .tabs-container { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0 10px 0; margin-bottom: 10px; }
+        .tab-btn { background: #232335; color: #a0a0b0; border: 1px solid #33334c; padding: 10px 16px; border-radius: 20px; font-weight: bold; font-size: 14px; cursor: pointer; white-space: nowrap; }
+        .tab-btn.active { background: var(--primary); color: #000; border-color: var(--primary); box-shadow: 0 4px 12px rgba(255,153,0,0.3); }
+
+        /* Selector de Automático/Manual */
+        .mode-container { background: var(--surface); display: flex; border-radius: 25px; padding: 4px; margin-bottom: 15px; border: 1px solid #232335; }
+        .mode-btn { flex: 1; background: transparent; border: none; color: #a0a0b0; padding: 10px; font-weight: bold; border-radius: 22px; cursor: pointer; font-size: 14px; }
+        .mode-btn.active { background: #232335; color: var(--primary); box-shadow: inset 0 0 5px rgba(0,0,0,0.5); }
+        .mode-btn.active.auto { color: var(--success); }
+
+        /* Estructura del Cartón Bingo */
+        .bingo-wrapper { background: #ffffff; color: #111116; padding: 12px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.4); margin-bottom: 15px; }
+        .bingo-letters { display: grid; grid-template-columns: repeat(5, 1fr); font-size: 26px; font-weight: 900; color: #ff9900; margin-bottom: 8px; text-shadow: 1px 1px 0px rgba(0,0,0,0.1); }
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        
+        .cell { aspect-ratio: 1; background: #f0f2f5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; cursor: pointer; transition: background 0.15s, transform 0.1s; border-bottom: 3px solid #dbdee4; -webkit-tap-highlight-color: transparent; }
+        .cell:active { transform: scale(0.94); }
+        .cell.marked { background: var(--success); color: #fff; border-bottom-color: #1b8a7f; animation: pulseMark 0.2s ease-out; }
+        .cell.free-space { background: #e74c3c; color: #fff; font-size: 12px; font-weight: 900; border-bottom-color: #b03a2e; }
+
+        .status-bar { font-size: 15px; font-weight: bold; color: var(--primary); margin-top: 10px; min-height: 20px; }
+        
+        @keyframes pulseMark {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(0.96); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div id="viewLogin" class="card-login">
+        <h2 style="margin-top:0; color:var(--primary);">MIS CARTONES DIGITALES</h2>
+        <p style="color:#a0a0b0; font-size:14px; margin-bottom:20px;">Ingresa el ID que aparece impreso en tu cartón PDF para empezar a jugar.</p>
+        <input type="text" id="cartonIdInput" placeholder="Ejemplo: 4A2" autocomplete="off">
+        <button class="btn-add" onclick="solicitarCartonServidor()">VINCULAR MI CARTÓN ➕</button>
+        <div id="listaMisIds" style="margin-top:20px; text-align:left; font-size:14px; color:#a0a0b0;"></div>
+        <button id="btnEmpezarJuego" class="btn-add" style="background:var(--success); margin-top:15px; display:none;" onclick="mostrarPantallaJuego()">IR A JUGAR EN VIVO ➡️</button>
+    </div>
+
+    <div id="viewGame" style="display: none;">
+        <div class="header">
+            <h1 id="liveTitle">EL BINGAZO LIVE</h1>
+            <div class="status-bar" id="liveStatus">Esperando primera balota...</div>
+        </div>
+
+        <div class="tabs-container" id="cartonTabs"></div>
+
+        <div class="mode-container">
+            <button id="modeManual" class="mode-btn active" onclick="cambiarModo('manual')">MARCADO MANUAL</button>
+            <button id="modeAuto" class="mode-btn" onclick="cambiarModo('auto')">AUTO-MARCADO 🤖</button>
+        </div>
+
+        <div class="bingo-wrapper">
+            <div class="bingo-letters">
+                <div>B</div><div>I</div><div>N</div><div>G</div><div>O</div>
+            </div>
+            <div id="bingoGridDisplay" class="bingo-grid"></div>
+        </div>
+        
+        <button class="btn-add" style="background:#232335; color:#fff;" onclick="regresarALogin()">➕ AGREGAR OTRO CARTÓN</button>
+    </div>
+
+</div>
+
+<script>
+    let socket;
+    let cartonesCargados = {}; 
+    let idCartonActivo = null;
+    let bolasCantadasGlobal = new Set();
+    let modoGlobal = 'manual'; 
+
+    function conectarWebSocket() {
+        // Detecta automáticamente si está en producción (https -> wss) o local (http -> ws)
+        const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        socket = new WebSocket(`${protocol}${window.location.host}`);
+
+        socket.onopen = () => {
+            console.log("Conectado al servidor de El Bingazo");
+        };
+
+        socket.onmessage = (event) => {
+            const msg = JSON.parse(event.data);
+
+            switch (msg.type) {
+                case 'ESTADO_INICIAL':
+                    bolasCantadasGlobal.clear();
+                    msg.data.bolasSacadas.forEach(b => bolasCantadasGlobal.add(Number(b)));
+                    if(msg.data.bolasSacadas.length > 0) {
+                        actualizarBarraEstado(`Última balota cantada: Nº ${msg.data.bolasSacadas[msg.data.bolasSacadas.length - 1]}`);
+                    }
+                    if (idCartonActivo) redibujarCartonActual();
+                    break;
+
+                case 'ENTREGAR_CARTON':
+                    const c = msg.carton;
+                    if (!cartonesCargados[c.id]) {
+                        cartonesCargados[c.id] = {
+                            id: c.id,
+                            grid: c.grid,
+                            marcadosManual: new Set()
+                        };
+                    }
+                    actualizarListaIngreso();
+                    break;
+
+                case 'NUEVA_BOLA':
+                    const numeroBola = Number(msg.bola);
+                    bolasCantadasGlobal.add(numeroBola);
+                    actualizarBarraEstado(`🚨 BALOTA EN VIVO: ${msg.letra} - ${numeroBola}`);
+                    
+                    if (modoGlobal === 'auto') {
+                        redibujarCartonActual();
+                    }
+                    break;
+
+                case 'REINICIAR_JUEGO':
+                    bolasCantadasGlobal.clear();
+                    actualizarBarraEstado("🔄 El juego ha sido reiniciado. ¡Buena suerte!");
+                    Object.keys(cartonesCargados).forEach(id => cartonesCargados[id].marcadosManual.clear());
+                    redibujarCartonActual();
+                    break;
+
+                case 'ERROR_CARTON':
+                    alert(msg.mensaje);
+                    break;
+            }
+        };
+
+        socket.onclose = () => {
+            console.log("Conexión perdida. Intentando reconectar en 3 segundos...");
+            actualizarBarraEstado("⚠️ Conexión perdida. Reconectando...");
+            setTimeout(conectarWebSocket, 3000);
+        };
+    }
+
+    function solicitarCartonServidor() {
+        const input = document.getElementById('cartonIdInput');
+        const id = input.value.trim().toUpperCase();
+        if (!id) return;
+        
+        if (cartonesCargados[id]) {
+            alert("Este cartón ya está en tu lista.");
+            input.value = "";
+            return;
+        }
+        socket.send(JSON.stringify({ type: 'SOLICITAR_CARTON', id: id }));
+        input.value = "";
+    }
+
+    function actualizarListaIngreso() {
+        const ids = Object.keys(cartonesCargados);
+        const lista = document.getElementById('listaMisIds');
+        const btnEmpezar = document.getElementById('btnEmpezarJuego');
+        
+        if(ids.length > 0) {
+            lista.innerHTML = `<strong>Cartones listos para jugar:</strong> ` + ids.map(id => `<span style="background:#ff990022; color:var(--primary); padding:4px 8px; border-radius:4px; margin-right:5px; border:1px solid var(--primary); font-weight:bold;">${id}</span>`).join(' ');
+            btnEmpezar.style.display = "block";
+        } else {
+            lista.innerHTML = "";
+            btnEmpezar.style.display = "none";
+        }
+    }
+
+    function mostrarPantallaJuego() {
+        const ids = Object.keys(cartonesCargados);
+        if (ids.length === 0) return;
+        
+        document.getElementById('viewLogin').style.display = 'none';
+        document.getElementById('viewGame').style.display = 'block';
+        
+        idCartonActivo = ids[0];
+        generarPestañas();
+        redibujarCartonActual();
+    }
+
+    function generarPestañas() {
+        const container = document.getElementById('cartonTabs');
+        container.innerHTML = '';
+        const ids = Object.keys(cartonesCargados);
+        
+        if (ids.length <= 1) return;
+
+        ids.forEach(id => {
+            const btn = document.createElement('button');
+            btn.className = `tab-btn ${id === idCartonActivo ? 'active' : ''}`;
+            btn.textContent = `Cartón ${id}`;
+            btn.onclick = () => {
+                idCartonActivo = id;
+                generarPestañas();
+                redibujarCartonActual();
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    function redibujarCartonActual() {
+        if (!idCartonActivo || !cartonesCargados[idCartonActivo]) return;
+        
+        const carton = cartonesCargados[idCartonActivo];
+        const display = document.getElementById('bingoGridDisplay');
+        display.innerHTML = '';
+
+        carton.grid.forEach((fila) => {
+            fila.forEach((valor) => {
+                const cell = document.createElement('div');
+                const numValor = Number(valor);
+                
+                if (valor === "FREE" || valor === 0) {
+                    cell.className = 'cell free-space';
+                    cell.textContent = "LIBRE";
+                } else {
+                    cell.className = 'cell';
+                    cell.textContent = valor;
+
+                    if (modoGlobal === 'auto') {
+                        if (bolasCantadasGlobal.has(numValor)) {
+                            cell.classList.add('marked');
+                        }
+                    } else {
+                        if (carton.marcadosManual.has(numValor)) {
+                            cell.classList.add('marked');
+                        }
+                        
+                        cell.onclick = () => {
+                            if (carton.marcadosManual.has(numValor)) {
+                                carton.marcadosManual.delete(numValor);
+                                cell.classList.remove('marked');
+                            } else {
+                                carton.marcadosManual.add(numValor);
+                                cell.classList.add('marked');
+                            }
+                        };
+                    }
+                }
+                display.appendChild(cell);
+            });
+        });
+    }
+
+    function cambiarModo(modo) {
+        modoGlobal = modo;
+        document.getElementById('modeManual').classList.toggle('active', modo === 'manual');
+        document.getElementById('modeAuto').classList.toggle('active', modo === 'auto');
+        document.getElementById('modeAuto').classList.toggle('auto', modo === 'auto');
+        redibujarCartonActual();
+    }
+
+    function actualizarBarraEstado(texto) {
+        document.getElementById('liveStatus').textContent = texto;
+    }
+
+    function regresarALogin() {
+        document.getElementById('viewGame').style.display = 'none';
+        document.getElementById('viewLogin').style.display = 'block';
+        actualizarListaIngreso();
+    }
+
+    // Iniciar conexión al cargar la página
+    conectarWebSocket();
+</script>
+</body>
+</html>
