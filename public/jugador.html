@@ -55,8 +55,12 @@
 
     <div id="viewLogin" class="card-login">
         <h2 style="margin-top:0; color:var(--primary);">MIS CARTONES DIGITALES</h2>
-        <p style="color:#a0a0b0; font-size:14px; margin-bottom:20px;">Ingresa el ID que aparece impreso en tu cartón PDF para empezar a jugar.</p>
-        <input type="text" id="cartonIdInput" placeholder="Ejemplo: 4A2" autocomplete="off">
+        <p style="color:#a0a0b0; font-size:14px; margin-bottom:20px;">Regístrate e ingresa el ID de tu cartón para unirte al juego en vivo.</p>
+        
+        <input type="text" id="regNombreJugador" placeholder="TU NOMBRE COMPLETO" autocomplete="off" style="text-transform: none;">
+        <input type="tel" id="regTelJugador" placeholder="TU WHATSAPP / CELULAR" autocomplete="off">
+        <input type="text" id="cartonIdInput" placeholder="ID DEL CARTÓN (Ej: 4A2)" autocomplete="off">
+        
         <button class="btn-add" onclick="solicitarCartonServidor()">VINCULAR MI CARTÓN ➕</button>
         <div id="listaMisIds" style="margin-top:20px; text-align:left; font-size:14px; color:#a0a0b0;"></div>
         <button id="btnEmpezarJuego" class="btn-add" style="background:var(--success); margin-top:15px; display:none;" onclick="mostrarPantallaJuego()">IR A JUGAR EN VIVO ➡️</button>
@@ -95,7 +99,6 @@
     let modoGlobal = 'manual'; 
 
     function conectarWebSocket() {
-        // Detecta automáticamente si está en producción (https -> wss) o local (http -> ws)
         const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
         socket = new WebSocket(`${protocol}${window.location.host}`);
 
@@ -159,17 +162,47 @@
     }
 
     function solicitarCartonServidor() {
-        const input = document.getElementById('cartonIdInput');
-        const id = input.value.trim().toUpperCase();
-        if (!id) return;
+        const inputNombre = document.getElementById('regNombreJugador');
+        const inputTel = document.getElementById('regTelJugador');
+        const inputId = document.getElementById('cartonIdInput');
+
+        const nombre = inputNombre.value.trim();
+        const telefono = inputTel.value.trim();
+        const id = inputId.value.trim().toUpperCase();
+
+        // Validamos que llenen todos los datos antes de solicitar el cartón
+        if (!nombre) {
+            alert("Por favor, ingresa tu Nombre.");
+            inputNombre.focus();
+            return;
+        }
+        if (!telefono) {
+            alert("Por favor, ingresa tu Celular/WhatsApp.");
+            inputTel.focus();
+            return;
+        }
+        if (!id) {
+            alert("Por favor, ingresa el ID del cartón.");
+            inputId.focus();
+            return;
+        }
         
         if (cartonesCargados[id]) {
             alert("Este cartón ya está en tu lista.");
-            input.value = "";
+            inputId.value = "";
             return;
         }
-        socket.send(JSON.stringify({ type: 'SOLICITAR_CARTON', id: id }));
-        input.value = "";
+
+        // Enviamos la petición incluyendo los datos de registro
+        socket.send(JSON.stringify({ 
+            type: 'SOLICITAR_CARTON', 
+            id: id,
+            nombre: nombre,
+            telefono: telefono
+        }));
+        
+        // Limpiamos solo el input del id del cartón por si quieren registrar más de uno bajo el mismo nombre
+        inputId.value = "";
     }
 
     function actualizarListaIngreso() {
@@ -280,7 +313,6 @@
         actualizarListaIngreso();
     }
 
-    // Iniciar conexión al cargar la página
     conectarWebSocket();
 </script>
 </body>
