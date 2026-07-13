@@ -11,6 +11,15 @@ const wss = new WebSocket.Server({ server });
 // Servir la carpeta pública
 app.use(express.static(path.join(__dirname, 'public')));
 
+// RUTA FORZADA para el jugador (Evita cacheos agresivos de navegadores y CDN en producción)
+app.get('/jugador.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'jugador.html'), { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, private' } });
+});
+
+app.get('/jugador', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'jugador.html'));
+});
+
 // Cargar la base de datos de cartones en memoria
 let bangueraCartones = [];
 try {
@@ -46,7 +55,19 @@ wss.on('connection', (ws) => {
                     );
                     
                     if (cartonEncontrado) {
+                        // Enviamos el cartón al jugador
                         ws.send(JSON.stringify({ type: 'ENTREGAR_CARTON', carton: cartonEncontrado }));
+
+                        // 📢 TRANSMITIR EL REGISTRO: Enviamos los datos del nuevo jugador (nombre, celular y ID del cartón)
+                        // a todas las pantallas, incluyendo el panel de 'gestion.html'
+                        broadcast({
+                            type: 'NUEVO_JUGADOR_CONECTADO',
+                            datos: {
+                                id: evento.id,
+                                nombre: evento.nombre || 'Anónimo',
+                                telefono: evento.telefono || 'Sin número'
+                            }
+                        });
                     } else {
                         ws.send(JSON.stringify({ type: 'ERROR_CARTON', mensaje: `El cartón "${evento.id}" no existe.` }));
                     }

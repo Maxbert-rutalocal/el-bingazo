@@ -69,7 +69,7 @@
             border-left: 4px solid var(--win-gold); font-size: 13px;
         }
 
-        /* --- ESTILOS NUEVOS PANEL DJ --- */
+        /* --- ESTILOS PANEL DJ --- */
         .dj-panel {
             background: #0a0a0a;
             border: 1px solid var(--dj-color);
@@ -222,7 +222,7 @@
 </div>
 
 <script>
-    // === CONEXIÓN WEBSOCKET INTELIGENTE PARA ENTORNO LOCAL Y CLOUD (RENDER) ===
+    // === CONEXIÓN WEBSOCKET INTELIGENTE PARA ENTORNO LOCAL Y CLOUD ===
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const socketBingo = new WebSocket(`${protocol}//${window.location.host}`);
     
@@ -238,7 +238,7 @@
     
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
-    // --- LÓGICA DEL PANEL DJ ACTUALIZADA ---
+    // --- LÓGICA DEL PANEL DJ ---
     let djAudios = []; 
     let currentVolume = 0.5;
 
@@ -375,7 +375,7 @@
         pendingBall = { num: ball, letter: letra };
         playBallSound();
 
-        // 🚨 RETRANSMISIÓN EN VIVO: Le avisamos al servidor de la nueva bola de inmediato
+        // RETRANSMISIÓN EN VIVO al servidor
         if (socketBingo.readyState === WebSocket.OPEN) {
             socketBingo.send(JSON.stringify({
                 type: 'BOLA_SACADA',
@@ -589,7 +589,7 @@
         document.getElementById('statRest').textContent = '75';
         cerrarGanador();
         
-        // 🔄 REINICIO EN RED: Le avisamos al servidor de limpiar los teléfonos conectados
+        // REINICIO EN RED: Limpiar teléfonos conectados
         if (socketBingo.readyState === WebSocket.OPEN) {
             socketBingo.send(JSON.stringify({ type: 'BARRIDO' }));
         }
