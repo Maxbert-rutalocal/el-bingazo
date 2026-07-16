@@ -2,11 +2,33 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>EL BINGAZO - DJ EDITION</title>
+    <title>EL BINGAZO - DJ EDITION (MESA DE CONTROL)</title>
     <style>
         :root { --primary: #ff9900; --secondary: #1e90ff; --bg: #050505; --surface: #121212; --text: #ffffff; --accent: #27ae60; --danger: #e74c3c; --win-gold: #ffd700; --dj-color: #9c27b0; }
         body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        header { background: linear-gradient(90deg, #ff9900, #ffcc00); color: #000; padding: 10px; font-size: 22px; font-weight: 900; text-align: center; text-transform: uppercase; }
+        
+        header { 
+            background: linear-gradient(90deg, #ff9900, #ffcc00); 
+            color: #000; 
+            padding: 10px 20px; 
+            font-size: 22px; 
+            font-weight: 900; 
+            text-transform: uppercase;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .connection-badge {
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: #fff;
+            background: var(--danger);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: 0.3s;
+        }
+
         .mainLayout { display: grid; grid-template-columns: 320px 1fr 300px; gap: 15px; padding: 15px; flex: 1; overflow: hidden;}
         .panel { background: var(--surface); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; gap: 10px; border: 1px solid #222; overflow-y: auto;}
         
@@ -117,7 +139,10 @@
 </head>
 <body>
 
-<header>EL BINGAZO</header>
+<header>
+    <div style="flex: 1;">EL BINGAZO - DJ EDITION</div>
+    <div id="connectionStatus" class="connection-badge">DESCONECTADO</div>
+</header>
 
 <div class="mainLayout">
     <div class="panel">
@@ -222,22 +247,37 @@
 </div>
 
 <script>
-    // === CONEXIÓN WEBSOCKET INTELIGENTE PARA ENTORNO LOCAL Y CLOUD ===
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const socketBingo = new WebSocket(`${protocol}//${window.location.host}`);
-    
-    socketBingo.onopen = () => {
-        console.log("✅ Mesa de Control conectada exitosamente al servidor Node.js.");
-    };
-
     let allCards = [], linkedCards = [], drawnBalls = new Set(), autoInterval = null;
     let winnerFound = null;
     let clickPhase = 0; 
     let pendingBall = { num: 0, letter: '' };
     let winnersHistory = []; 
+    let socket; // Variable para la conexión WebSocket
     
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
+
+    // --- CONEXIÓN AL SERVIDOR WEBSOCKET ---
+    function conectarWS() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        socket = new WebSocket(`${protocol}//${host}`);
+
+        socket.onopen = () => {
+            const badge = document.getElementById('connectionStatus');
+            badge.textContent = "CONECTADO";
+            badge.style.background = "var(--accent)";
+        };
+
+        socket.onclose = () => {
+            const badge = document.getElementById('connectionStatus');
+            badge.textContent = "DESCONECTADO";
+            badge.style.background = "var(--danger)";
+            setTimeout(conectarWS, 3000); // Reintentar reconexión cada 3 segundos
+        };
+
+        socket.onerror = (err) => console.error("Error en socket:", err);
+    }
+
     // --- LÓGICA DEL PANEL DJ ---
     let djAudios = []; 
     let currentVolume = 0.5;
@@ -278,7 +318,6 @@
         });
     });
 
-    // Función para actualizar el texto central de la bola basándose en el título y enviarlo a la red
     function updateGameDisplay() {
         const title = document.getElementById('gameTitleInput').value.trim();
         const letterEl = document.getElementById('letter');
@@ -288,14 +327,6 @@
             letterEl.textContent = title !== "" ? title.toUpperCase() : "LISTO";
             letterEl.style.fontSize = title.length > 10 ? "25px" : "40px";
             numberEl.textContent = "--";
-        }
-
-        // Transmitir cambio de título a los móviles en tiempo real
-        if (socketBingo.readyState === WebSocket.OPEN) {
-            socketBingo.send(JSON.stringify({
-                type: 'CAMBIAR_TITULO',
-                titulo: title !== "" ? title.toUpperCase() : "EL BINGAZO LIVE"
-            }));
         }
     }
 
@@ -375,15 +406,6 @@
         pendingBall = { num: ball, letter: letra };
         playBallSound();
 
-        // RETRANSMISIÓN EN VIVO al servidor
-        if (socketBingo.readyState === WebSocket.OPEN) {
-            socketBingo.send(JSON.stringify({
-                type: 'BOLA_SACADA',
-                letra: letra,
-                bola: ball
-            }));
-        }
-
         const winners = checkWinners();
         if (winners.win) {
             detenerSorteo();
@@ -399,6 +421,15 @@
             document.getElementById('number').textContent = ball;
             document.getElementById(`cell-${ball}`).classList.add('marked');
             document.getElementById('statRest').textContent = 75 - drawnBalls.size;
+
+            // --- SINCRONIZAR CON EL SERVIDOR EN TIEMPO REAL ---
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'NUEVA_BOLA',
+                    numero: ball,
+                    letra: letra
+                }));
+            }
         }
     }
 
@@ -428,6 +459,15 @@
                 document.getElementById('statRest').textContent = 75 - drawnBalls.size;
                 ballEl.className = 'phase-3';
                 btn.textContent = "4. VER GANADORES";
+
+                // --- ¡SINCRO CON EL SERVIDOR EN LA FASE DE REVENTADO! ---
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({
+                        type: 'NUEVA_BOLA',
+                        numero: pendingBall.num,
+                        letra: pendingBall.letter
+                    }));
+                }
                 break;
             case 4: 
                 winnerFound.ids.forEach(id => {
@@ -588,13 +628,14 @@
         document.getElementById('number').textContent = '--';
         document.getElementById('statRest').textContent = '75';
         cerrarGanador();
-        
-        // REINICIO EN RED: Limpiar teléfonos conectados
-        if (socketBingo.readyState === WebSocket.OPEN) {
-            socketBingo.send(JSON.stringify({ type: 'BARRIDO' }));
-        }
-        
         updateGameDisplay(); 
+
+        // --- ENVIAR BARRIDO AL SERVIDOR ---
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({
+                type: 'REINICIAR_JUEGO'
+            }));
+        }
     }
 
     function cerrarGanador() {
@@ -625,7 +666,9 @@
         document.getElementById('autoBtn').style.background = "var(--secondary)";
     }
     document.getElementById('cardInput').onkeypress = (e) => { if(e.key === 'Enter') vincularCarton(); };
-</script>
 
+    // Inicializar conexión en segundo plano al cargar la página
+    window.addEventListener('load', conectarWS);
+</script>
 </body>
 </html>

@@ -2,102 +2,210 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>EL BINGAZO — Gestión, Monedas y Ganadores</title>
-    <script src="/socket.io/socket.io.js"></script>
+    <title>EL BINGAZO — Gestión y Ganadores</title>
     <style>
-        :root { --naranja: #ff6600; --amarillo: #ffcc00; --morado: #660099; --rosa: #ff0066; --success: #27ae60; --danger: #e74c3c; --info: #2980b9; }
-        body { font-family: 'Arial Black', sans-serif; background: #222; margin: 0; padding: 0; color: white; }
-        .no-print { background: #000; color: #fff; padding: 15px; border-bottom: 5px solid var(--naranja); }
-        .admin-panel { background: #111; border: 1px solid #333; padding: 15px; border-radius: 8px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 10px; }
-        .panel-monedas { background: #1a1a2e; border: 2px solid var(--amarillo); }
-        input, textarea { padding: 8px; border-radius: 4px; border: none; font-family: sans-serif; }
-        button { cursor: pointer; font-weight: bold; border: none; border-radius: 5px; padding: 10px; transition: 0.3s; }
-        button:hover { opacity: 0.8; transform: scale(1.02); }
-        
-        /* Tablas de control en vivo */
-        .tabla-viva { width: 100%; border-collapse: collapse; margin-top: 5px; font-family: sans-serif; font-size: 13px; }
-        .tabla-viva th, .tabla-viva td { padding: 8px; text-align: left; border-bottom: 1px solid #333; }
-        .tabla-viva th { background: #000; color: var(--amarillo); }
-        
-        #ganadoresContainer { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; padding: 20px; }
-        .card-ganador { background: #333; border: 3px solid var(--rosa); border-radius: 12px; padding: 15px; position: relative; box-shadow: 0 4px 15px rgba(0,0,0,0.5); color: white; }
-        .card-ganador h3 { margin: 0 0 10px 0; color: #fff; background: var(--rosa); padding: 5px; border-radius: 4px; text-align: center; font-size: 14px; }
-        .info-ganador { font-family: sans-serif; font-size: 14px; line-height: 1.4; }
-        .nota-pago { width: 100%; margin-top: 10px; background: #222; color: #0f0; border: 1px dashed #555; padding: 8px; font-size: 12px; border-radius: 4px; resize: none; box-sizing: border-box; }
-        
-        #resBusqueda { margin-top: 10px; padding: 15px; border-radius: 8px; background: #333; display: inline-block; min-width: 450px; border: 2px solid var(--amarillo); position: relative; }
-        .close-search { position: absolute; top: 5px; right: 5px; background: var(--danger); color: white; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; }
-        .status-badge { padding: 5px 10px; border-radius: 4px; font-size: 14px; text-transform: uppercase; font-weight: 900; }
+        :root { 
+            --naranja: #ff6600; 
+            --amarillo: #ffcc00; 
+            --morado: #660099; 
+            --rosa: #ff0066; 
+            --success: #27ae60; 
+            --danger: #e74c3c; 
+            --info: #2980b9; 
+        }
+        body { 
+            font-family: 'Arial Black', sans-serif; 
+            background: #222; 
+            margin: 0; 
+            padding: 0; 
+            color: white; 
+        }
+        .no-print { 
+            background: #000; 
+            color: #fff; 
+            padding: 15px; 
+            border-bottom: 5px solid var(--naranja); 
+        }
+        .admin-panel { 
+            background: #111; 
+            border: 1px solid #333; 
+            padding: 15px; 
+            border-radius: 8px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            align-items: center; 
+            margin-top: 10px; 
+        }
+        input, textarea { 
+            padding: 8px; 
+            border-radius: 4px; 
+            border: none; 
+            font-family: sans-serif; 
+        }
+        button { 
+            cursor: pointer; 
+            font-weight: bold; 
+            border: none; 
+            border-radius: 5px; 
+            padding: 10px; 
+            transition: 0.3s; 
+        }
+        button:hover { 
+            opacity: 0.8; 
+            transform: scale(1.02); 
+        }
+        #ganadoresContainer { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 15px; 
+            padding: 20px; 
+        }
+        .card-ganador { 
+            background: #333; 
+            border: 3px solid var(--rosa); 
+            border-radius: 12px; 
+            padding: 15px; 
+            position: relative; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+            color: white; 
+        }
+        .card-ganador h3 { 
+            margin: 0 0 10px 0; 
+            color: #fff; 
+            background: var(--rosa); 
+            padding: 5px; 
+            border-radius: 4px; 
+            text-align: center; 
+            font-size: 14px; 
+        }
+        .info-ganador { 
+            font-family: sans-serif; 
+            font-size: 14px; 
+            line-height: 1.4; 
+        }
+        .nota-pago { 
+            width: 100%; 
+            margin-top: 10px; 
+            background: #222; 
+            color: #0f0; 
+            border: 1px dashed #555; 
+            padding: 8px; 
+            font-size: 12px; 
+            border-radius: 4px; 
+            resize: none; 
+            box-sizing: border-box; 
+        }
+        #resBusqueda { 
+            margin-top: 10px; 
+            padding: 15px; 
+            border-radius: 8px; 
+            background: #333; 
+            display: inline-block; 
+            min-width: 450px; 
+            border: 2px solid var(--amarillo); 
+            position: relative; 
+        }
+        .close-search { 
+            position: absolute; 
+            top: 5px; 
+            right: 5px; 
+            background: var(--danger); 
+            color: white; 
+            width: 30px; 
+            height: 30px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            border-radius: 50%; 
+            cursor: pointer; 
+        }
+        .status-badge { 
+            padding: 5px 10px; 
+            border-radius: 4px; 
+            font-size: 14px; 
+            text-transform: uppercase; 
+            font-weight: 900; 
+        }
         .bg-paid { background: var(--success); }
         .bg-pending { background: var(--danger); }
-        
-        #areaReporte { background: #fff; color: #000; padding: 20px; margin: 20px; border-radius: 10px; display: none; }
-        #printArea { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; padding: 20px; background: #fff; }
-        .carton { width: 420px; border: 4px solid var(--morado); border-radius: 15px; overflow: hidden; background: #fff; margin: 5px; color: #000; }
-        .btn-mini-del { background: var(--danger); color: white; padding: 2px 6px; font-size: 10px; margin-left: 10px; }
-        .badge-solicitud { background: var(--naranja); padding: 2px 6px; border-radius: 4px; font-weight: bold; }
-        
-        @media print { .no-print, .btn-eliminar-ganador, .btn-mini-del { display: none !important; } body { background: #fff; } .card-ganador { border-color: #000; color: #000 !important; background: #fff; page-break-inside: avoid; } .nota-pago { color: #000; border: 1px solid #000; } #areaReporte { display: block !important; margin: 0; padding: 0; } }
+        #areaReporte { 
+            background: #fff; 
+            color: #000; 
+            padding: 20px; 
+            margin: 20px; 
+            border-radius: 10px; 
+            display: none; 
+        }
+        #printArea { 
+            display: flex; 
+            flex-wrap: wrap; 
+            justify-content: center; 
+            gap: 10px; 
+            padding: 20px; 
+            background: #fff; 
+        }
+        .carton { 
+            width: 420px; 
+            border: 4px solid var(--morado); 
+            border-radius: 15px; 
+            overflow: hidden; 
+            background: #fff; 
+            margin: 5px; 
+            color: #000; 
+        }
+        .btn-mini-del { 
+            background: var(--danger); 
+            color: white; 
+            padding: 2px 6px; 
+            font-size: 10px; 
+            margin-left: 10px; 
+        }
+        .ws-status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .status-online { background: var(--success); color: white; }
+        .status-offline { background: var(--danger); color: white; }
+        @media print { 
+            .no-print, .btn-eliminar-ganador, .btn-mini-del { display: none !important; } 
+            body { background: #fff; } 
+            .card-ganador { border-color: #000; color: #000 !important; background: #fff; page-break-inside: avoid; } 
+            .nota-pago { color: #000; border: 1px solid #000; } 
+            #areaReporte { display: block !important; margin: 0; padding: 0; } 
+        }
     </style>
 </head>
 <body>
 
     <div class="no-print">
-        <div class="admin-panel panel-monedas">
-            <div style="width: 100%;">
-                <strong style="color: var(--amarillo); font-size: 18px;">🪙 CONTROL DE MONEDAS Y RECARGAS (EN VIVO)</strong>
-                <hr style="border-color: #333;">
+        <div class="admin-panel" style="justify-content: space-between;">
+            <div>
+                <strong>1. DATOS:</strong>
+                <input type="file" id="fileInput" accept=".json">
+                <input type="number" id="blockNum" value="1" style="width: 50px;">
+                <button onclick="generar()" style="background:var(--naranja); color:white;">MOSTRAR CARTONES</button>
+                <button onclick="window.print()" style="background:var(--morado); color:white;">💾 IMPRIMIR PDF</button>
             </div>
-            
-            <div style="flex: 1; min-width: 300px; background: #000; padding: 10px; border-radius: 6px;">
-                <b style="color: var(--rosa);">📩 Solicitudes de Pago por Validar:</b>
-                <div id="listaSolicitudesRecarga" style="margin-top: 8px; max-height: 150px; overflow-y: auto; font-family: sans-serif; font-size: 12px;">
-                    <i>No hay solicitudes pendientes en este momento.</i>
-                </div>
-            </div>
-
-            <div style="flex: 1; min-width: 400px; background: #000; padding: 10px; border-radius: 6px;">
-                <b style="color: var(--success);">👥 Jugadores en Línea y sus Monedas:</b>
-                <div style="max-height: 150px; overflow-y: auto;">
-                    <table class="tabla-viva" id="tablaUsuariosVivos">
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Teléfono</th>
-                                <th>Saldo 🪙</th>
-                                <th>Cartones 🎟️</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr><td colspan="4" style="text-align:center; color:#555;">Esperando conexiones...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <div id="wsConnectionStatus" class="ws-status status-offline">🔴 DESCONECTADO (Ventas sin sincronizar)</div>
         </div>
-
         <div class="admin-panel">
-            <strong>1. DATOS IMPRESIÓN:</strong>
-            <input type="file" id="fileInput" accept=".json">
-            <input type="number" id="blockNum" value="1" style="width: 50px;">
-            <button onclick="generar()" style="background:var(--naranja); color:white;">MOSTRAR CARTONES</button>
-            <button onclick="window.print()" style="background:var(--morado); color:white;">💾 IMPRIMIR PDF</button>
-        </div>
-
-        <div class="admin-panel">
-            <strong>👤 VENTAS MANUALES (EFECTIVO):</strong>
+            <strong>👤 VENTAS:</strong>
             <input type="text" id="regNombre" placeholder="Nombre">
             <input type="text" id="regTel" placeholder="Teléfono">
             <input type="text" id="regIDs" placeholder="IDs (ej: 1,2,3)">
-            <label><input type="checkbox" id="regPagado" checked> ¿Pagó?</label>
-            <button onclick="registrarManual()" style="background:var(--success); color:white;">GUARDAR VENTA MANUAL</button>
-            <button onclick="generarReporte()" style="background:white; color:black;">📊 LISTA TOTAL DE VENTAS</button>
+            <label><input type="checkbox" id="regPagado"> ¿Pagó?</label>
+            <button onclick="registrar()" style="background:var(--success); color:white;">GUARDAR VENTA</button>
+            <button onclick="generarReporte()" style="background:white; color:black;">📊 LISTA DE VENTAS</button>
             <button onclick="copiarIdsPagados()" style="background:var(--info); color:white;">📋 COPIAR IDs PAGADOS</button>
             <button onclick="borrarVentas()" style="background:var(--danger); color:white;">🗑️ RESET VENTAS</button>
         </div>
 
         <div class="admin-panel" style="background: #282828; border: 2px solid var(--rosa);">
-            <strong>🏆 REGISTRAR GANADOR (HISTORIAL MANUAL):</strong>
+            <strong>🏆 REGISTRAR GANADOR:</strong>
             <input type="text" id="winID" placeholder="ID(s) ej: 1,2" style="width:120px" oninput="buscarDatosGanador()">
             <input type="text" id="winNombre" placeholder="Nombre (Auto)">
             <input type="text" id="winTel" placeholder="Teléfono (Auto)">
@@ -107,7 +215,7 @@
         </div>
 
         <div class="admin-panel">
-            <strong>🔍 BUSCADOR INTERNO:</strong>
+            <strong>🔍 BUSCADOR:</strong>
             <input type="text" id="searchID" placeholder="ID cartón">
             <button onclick="buscar()" style="background:var(--amarillo); color:black;">GESTIONAR PAGO</button>
             <div id="resBusqueda">Esperando ID...</div>
@@ -119,165 +227,324 @@
     <div id="ganadoresContainer"></div>
 
     <script>
-        // --- SE CONECTA AL SERVIDOR EN VIVO ---
-        const socket = io();
-
         let datosBingo = [];
         let registroVentas = JSON.parse(localStorage.getItem('registroBingo')) || [];
         let ganadores = JSON.parse(localStorage.getItem('ganadoresBingo')) || [];
+        let socket;
 
-        // Inicializar render de ganadores locales si existen
-        renderGanadores();
-
-        // Escuchar el estado inicial del servidor para sincronizar
-        socket.on('ESTADO_INICIAL', (data) => {
-            console.log("Sincronizado con el servidor. Título actual: " + data.titulo);
-        });
-
-        // Escuchar la lista de usuarios conectados enviada por el servidor
-        socket.on('ACTUALIZAR_LISTA_USUARIOS', (listaUsuarios) => {
-            const tbody = document.getElementById('tablaUsuariosVivos').querySelector('tbody');
-            tbody.innerHTML = "";
+        // --- CONEXIÓN WEBSOCKET Y SINCRONIZACIÓN ---
+        function conectarWS() {
+            // Detecta automáticamente si estás en localhost o en producción (ej. Glitch/Heroku)
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const host = window.location.host;
             
-            if(listaUsuarios.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#555;">No hay jugadores en la app.</td></tr>`;
-                return;
-            }
+            socket = new WebSocket(`${protocol}//${host}`);
 
-            listaUsuarios.forEach(user => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td style="color:#fff; font-weight:bold;">${user.nombre}</td>
-                        <td>${user.telefono}</td>
-                        <td style="color:var(--amarillo); font-weight:bold;">${user.monedas} 🪙</td>
-                        <td style="color:var(--success); font-weight:bold;">${user.cartonesComprados.length > 0 ? user.cartonesComprados.join(', ') : 'Ninguno'}</td>
-                    </tr>
-                `;
-            });
-        });
-
-        // Escuchar cola de solicitudes de recarga enviadas por jugadores
-        socket.on('NUEVA_SOLICITUD_RECARGA', (solicitudes) => {
-            const container = document.getElementById('listaSolicitudesRecarga');
-            container.innerHTML = "";
-
-            if(solicitudes.length === 0) {
-                container.innerHTML = `<i>No hay solicitudes pendientes en este momento.</i>`;
-                return;
-            }
-
-            solicitudes.forEach(s => {
-                container.innerHTML += `
-                    <div style="background:#222; border:1px solid #444; padding:8px; margin-bottom:5px; border-radius:4px; display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <b>👤 ${s.nombre}</b> (${s.telefono})<br>
-                            Paquete: <span class="badge-solicitud">${s.paquete} 🪙</span> | Ref: <span style="color:var(--amarillo)">${s.referencia}</span>
-                        </div>
-                        <div style="display:flex; gap:5px;">
-                            <button onclick="responderRecarga('${s.id}', true)" style="background:var(--success); color:white; padding:5px;">👍 SÍ</button>
-                            <button onclick="responderRecarga('${s.id}', false)" style="background:var(--danger); color:white; padding:5px;">✕ NO</button>
-                        </div>
-                    </div>
-                `;
-            });
-        });
-
-        // Escuchar cuando un jugador compra un cartón automáticamente para guardarlo en la lista global de ventas
-        socket.on('CARTON_AUTOMATICO_VINCULADO', (data) => {
-            const yaExiste = registroVentas.find(v => v.cartones.includes(data.id));
-            if (!yaExiste) {
-                registroVentas.push({
-                    nombre: data.nombre,
-                    tel: data.telefono,
-                    cartones: [data.id],
-                    pagado: true 
-                });
-                localStorage.setItem('registroBingo', JSON.stringify(registroVentas));
+            socket.onopen = () => {
+                console.log("🔌 Conectado al Servidor de El Bingazo");
+                const statusDiv = document.getElementById('wsConnectionStatus');
+                statusDiv.innerText = "🟢 EN LÍNEA (Sincronizado)";
+                statusDiv.className = "ws-status status-online";
                 
-                // Si la tabla de reportes está abierta en pantalla, se refresca sola
-                if (document.getElementById('areaReporte').style.display === 'block') {
-                    generarReporte();
-                }
-            }
-        });
+                // Sincronizar la base de datos local de ventas con el servidor apenas conecte
+                sincronizarVentasConServidor();
+            };
 
-        // Función del Administrador para Aprobar o Rechazar monedas
-        function responderRecarga(solicitudId, aprobado) {
-            socket.emit('PROCESAR_RECARGA_ADMIN', { solicitudId, aprobado });
+            socket.onclose = () => {
+                console.log("❌ Desconectado. Reintentando conectar en 3 segundos...");
+                const statusDiv = document.getElementById('wsConnectionStatus');
+                statusDiv.innerText = "🔴 DESCONECTADO (Intentando reconectar...)";
+                statusDiv.className = "ws-status status-offline";
+                setTimeout(conectarWS, 3000);
+            };
+
+            socket.onerror = (error) => {
+                console.error("Error en WebSocket:", error);
+                socket.close();
+            };
+
+            // Escuchar si el servidor nos manda una alerta de un nuevo ganador desde el móvil de un jugador
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'NUEVO_GANADOR_DETECTADO') {
+                        alert(`🚨 ¡ALERTA DE BINGO! El cartón ID: ${data.cartonID} reporta victoria (${data.patron || 'Bingo'}).`);
+                        // Auto-rellenar campos de registro de ganadores para facilitarte el trabajo
+                        document.getElementById('winID').value = data.cartonID;
+                        document.getElementById('winSorteo').value = data.patron || "Bingo";
+                        buscarDatosGanador();
+                    }
+                } catch (e) {
+                    console.error("Error al procesar mensaje del servidor:", e);
+                }
+            };
         }
 
-        // Cargar Base Local para impresión
+        function sincronizarVentasConServidor() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({
+                    type: 'SYNC_VENTAS',
+                    ventas: registroVentas
+                }));
+            }
+        }
+
+        // Cargar Base de Datos JSON
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const reader = new FileReader();
-            reader.onload = (event) => { datosBingo = JSON.parse(event.target.result); alert("Base cargada para visualización local."); };
+            reader.onload = (event) => { 
+                datosBingo = JSON.parse(event.target.result); 
+                alert("Base cargada."); 
+            };
             reader.readAsText(e.target.files[0]);
         });
 
-        // Muestra y oculta bloques de cartones locales
+        // Inicializar al cargar la página
+        window.onload = function() {
+            renderGanadores();
+            conectarWS();
+        };
+
+        // Generar o alternar visualización de cartones
         function generar() {
             const container = document.getElementById('printArea');
-            if (container.innerHTML !== "") { container.innerHTML = ""; return; }
+            
+            if (container.innerHTML !== "") {
+                container.innerHTML = "";
+                return;
+            }
+
             if(datosBingo.length === 0) return alert("Carga el archivo JSON primero.");
             const block = document.getElementById('blockNum').value.toString();
             container.innerHTML = "";
             
             datosBingo.filter(c => c.block.toString() === block).forEach(c => {
                 let filasHtml = c.grid.map(fila => {
-                    return fila.map(num => `<div style="background:white; padding:10px; text-align:center; border:1px solid #ddd; font-size:12px;">${num === "FREE" ? "⭐" : num}</div>`).join('');
+                    return fila.map(num => `
+                        <div style="background:white; padding:10px; text-align:center; border:1px solid #ddd; font-size:12px;">
+                            ${num === "FREE" ? "⭐" : num}
+                        </div>
+                    `).join('');
                 }).join('');
 
                 container.innerHTML += `
                     <div class="carton">
                         <div style="background:var(--naranja); color:white; padding:10px; text-align:center;"><h2>EL BINGAZO</h2></div>
                         <div style="text-align:center; padding:10px; font-weight:bold;">ID: ${c.id}</div>
-                        <div style="display:grid; grid-template-columns:repeat(5,1fr); background:#000; gap:1px;">${filasHtml}</div>
+                        <div style="display:grid; grid-template-columns:repeat(5,1fr); background:#000; gap:1px;">
+                            ${filasHtml}
+                        </div>
                     </div>`;
             });
         }
 
-        // Registro Híbrido: Ventas manuales (Vecinos en efectivo)
-        function registrarManual() { 
-            const nombre = document.getElementById('regNombre').value.trim().toUpperCase(); 
+        // Registrar ventas con validación de ID único
+        function registrar() { 
+            const nombre = document.getElementById('regNombre').value.trim(); 
             const tel = document.getElementById('regTel').value.trim(); 
             const idsInput = document.getElementById('regIDs').value.toUpperCase().trim(); 
             const pagado = document.getElementById('regPagado').checked; 
             
-            if(!nombre || !idsInput) return alert("Faltan datos obligatorios."); 
+            if(!nombre || !idsInput) return alert("Faltan datos"); 
+            
             const ids = idsInput.split(',').map(i => i.trim()).filter(i => i !== ""); 
             
             for (let id of ids) { 
                 const yaExiste = registroVentas.find(v => v.cartones.includes(id)); 
-                if (yaExiste) return alert("❌ ERROR: El cartón ID: " + id + " ya está registrado por: " + yaExiste.nombre); 
+                if (yaExiste) return alert("❌ ERROR: El cartón ID: " + id + " ya está registrado a nombre de: " + yaExiste.nombre); 
             } 
             
             registroVentas.push({ nombre, tel, cartones: ids, pagado }); 
             localStorage.setItem('registroBingo', JSON.stringify(registroVentas)); 
-            alert("✅ Venta Manual Registrada con éxito."); 
             
-            // OPTIMIZACIÓN: Sincroniza al servidor mediante el canal directo SOLICITAR_CARTON simulando al admin 
-            // Esto bloquea de inmediato los IDs en todos los dispositivos de los jugadores en línea sin alterar sus monedas
-            ids.forEach(id => {
-                socket.emit('SOLICITAR_CARTON', { id: id, nombre: nombre, telefono: tel });
-            });
-
+            // Sincronizar inmediatamente con el servidor Node.js
+            sincronizarVentasConServidor();
+            
+            alert("✅ Venta Registrada con éxito"); 
+            
+            // Limpieza de campos
+            document.getElementById('regNombre').value = "";
+            document.getElementById('regTel').value = "";
             document.getElementById('regIDs').value = ""; 
-            if (document.getElementById('areaReporte').style.display === 'block') generarReporte();
+            document.getElementById('regPagado').checked = false;
         }
 
-        function generarReporte() { const area = document.getElementById('areaReporte'); area.innerHTML = `<div style="background:white; padding:20px; color:black; border-radius:10px;"><div style="display:flex; justify-content:space-between; align-items:center;"><h1>LISTA DE VENTAS TOTALES</h1><button onclick="document.getElementById('areaReporte').style.display='none'" class="no-print" style="background:var(--danger); color:white;">CERRAR</button></div><h2 style="color:green">✅ PAGADOS / AUTOMÁTICOS</h2>${registroVentas.filter(v => v.pagado).map(p => `<div style="margin-bottom:5px; border-bottom:1px solid #eee; padding:5px;"><b>${p.nombre}</b> (IDs: ${p.cartones.join(',')}) <button onclick="eliminarVentaIndividual('${p.cartones[0]}')" class="btn-mini-del no-print">BORRAR</button></div>`).join('')}<h2 style="color:red">❌ PENDIENTES</h2>${registroVentas.filter(v => !v.pagado).map(p => `<div style="margin-bottom:5px; border-bottom:1px solid #eee; padding:5px;"><b>${p.nombre}</b> (IDs: ${p.cartones.join(',')}) <button onclick="eliminarVentaIndividual('${p.cartones[0]}')" class="btn-mini-del no-print">BORRAR</button></div>`).join('')}</div>`; area.style.display = 'block'; }
-        function eliminarVentaIndividual(primerId) { if(confirm("¿Seguro que deseas eliminar este registro?")) { registroVentas = registroVentas.filter(v => v.cartones[0] !== primerId); localStorage.setItem('registroBingo', JSON.stringify(registroVentas)); generarReporte(); } }
-        function buscar() { const idBusqueda = document.getElementById('searchID').value.toUpperCase().trim(); const res = document.getElementById('resBusqueda'); const index = registroVentas.findIndex(v => v.cartones.includes(idBusqueda)); if(index !== -1) { const p = registroVentas[index]; res.innerHTML = `<div onclick="cerrarBusqueda()" class="close-search">X</div><span class="status-badge ${p.pagado?'bg-paid':'bg-pending'}">${p.pagado?'PAGADO':'PENDIENTE'}</span><br><b>${p.nombre}</b><br><button onclick="togglePago(${index})">CAMBIAR ESTADO</button>`; } else { res.innerHTML = "❌ No encontrado"; } }
-        function togglePago(index) { registroVentas[index].pagado = !registroVentas[index].pagado; localStorage.setItem('registroBingo', JSON.stringify(registroVentas)); buscar(); }
-        function cerrarBusqueda() { document.getElementById('resBusqueda').innerHTML = "Esperando ID..."; }
-        
-        function agregarGanador() { const sorteo = document.getElementById('winSorteo').value || "Premio General"; const idsInput = document.getElementById('winID').value.toUpperCase().trim(); if(!idsInput) return alert("Debes ingresar al menos un ID"); const listaIDs = idsInput.split(',').map(i => i.trim()).filter(i => i !== ""); listaIDs.forEach((id, index) => { const venta = registroVentas.find(v => v.cartones.includes(id)); const nombre = venta ? venta.nombre : (document.getElementById('winNombre').value || "Desconocido"); const tel = venta ? venta.tel : (document.getElementById('winTel').value || "Sin teléfono"); ganadores.push({ id: Date.now() + index + Math.random(), sorteo: sorteo, cartonID: id, nombre: nombre, telefono: tel, nota: "" }); }); localStorage.setItem('ganadoresBingo', JSON.stringify(ganadores)); renderGanadores(); document.getElementById('winID').value = ""; document.getElementById('winNombre').value = ""; document.getElementById('winTel').value = ""; }
-        function renderGanadores() { const container = document.getElementById('ganadoresContainer'); container.innerHTML = ""; ganadores.forEach(g => { container.innerHTML += `<div class="card-ganador"><button onclick="eliminarIndividual(${g.id})" style="position:absolute; right:10px; top:10px; background:none; color:white; font-size:18px;">✕</button><h3>${g.sorteo}</h3><div class="info-ganador"><b>🎟️ ID:</b> <span style="color:var(--amarillo)">${g.cartonID}</span><br><b>👤 NOMBRE:</b> ${g.nombre}<br><b>📞 TEL:</b> ${g.telefono}</div><textarea class="nota-pago" onchange="actualizarNota(${g.id}, this.value)" placeholder="Notas de entrega de premio...">${g.nota}</textarea></div>`; }); }
-        function eliminarIndividual(id) { ganadores = ganadores.filter(g => g.id !== id); localStorage.setItem('ganadoresBingo', JSON.stringify(ganadores)); renderGanadores(); }
-        function actualizarNota(id, val) { const g = ganadores.find(v => v.id === id); if(g) { g.nota = val; localStorage.setItem('ganadoresBingo', JSON.stringify(ganadores)); } }
-        function borrarVentas() { if(confirm("¿Reset total de ventas?")) { registroVentas = []; localStorage.setItem('registroBingo', "[]"); socket.emit('BARRIDO'); location.reload(); }}
-        function borrarGanadores() { if(confirm("¿Limpiar historial de premios?")) { ganadores = []; localStorage.setItem('ganadoresBingo', "[]"); renderGanadores(); }}
-        function copiarIdsPagados() { const pagados = registroVentas.filter(v => v.pagado); if(pagados.length === 0) return alert("No hay registros pagados."); const listaIds = pagados.flatMap(v => v.cartones).join(', '); navigator.clipboard.writeText(listaIds).then(() => alert("✅ IDs Copiados:\n" + listaIds)); }
-        function buscarDatosGanador() { const idsInput = document.getElementById('winID').value.toUpperCase().trim(); if(!idsInput) return; const primerID = idsInput.split(',')[0].trim(); const ventaEncontrada = registroVentas.find(v => v.cartones.includes(primerID)); if(ventaEncontrada) { document.getElementById('winNombre').value = ventaEncontrada.nombre; document.getElementById('winTel').value = ventaEncontrada.tel; } }
+        // Listar ventas estructuradas
+        function generarReporte() { 
+            const area = document.getElementById('areaReporte'); 
+            area.innerHTML = `
+                <div style="background:white; padding:20px; color:black; border-radius:10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h1>LISTA DE VENTAS</h1>
+                        <button onclick="document.getElementById('areaReporte').style.display='none'" class="no-print" style="background:var(--danger); color:white;">CERRAR</button>
+                    </div>
+                    <h2 style="color:green">✅ PAGADOS</h2>
+                    ${registroVentas.filter(v => v.pagado).map(p => `
+                        <div style="margin-bottom:5px; border-bottom:1px solid #eee; padding:5px; display:flex; justify-content:space-between; align-items:center;">
+                            <span><b>${p.nombre}</b> (IDs: ${p.cartones.join(', ')})</span>
+                            <button onclick="eliminarVentaIndividual('${p.cartones[0]}')" class="btn-mini-del no-print">BORRAR</button>
+                        </div>
+                    `).join('')}
+                    <h2 style="color:red">❌ PENDIENTES</h2>
+                    ${registroVentas.filter(v => !v.pagado).map(p => `
+                        <div style="margin-bottom:5px; border-bottom:1px solid #eee; padding:5px; display:flex; justify-content:space-between; align-items:center;">
+                            <span><b>${p.nombre}</b> (IDs: ${p.cartones.join(', ')})</span>
+                            <button onclick="eliminarVentaIndividual('${p.cartones[0]}')" class="btn-mini-del no-print">BORRAR</button>
+                        </div>
+                    `).join('')}
+                </div>`; 
+            area.style.display = 'block'; 
+        }
+
+        // Eliminar registro de venta individual
+        function eliminarVentaIndividual(primerId) { 
+            if(confirm("¿Seguro que deseas eliminar este registro de venta?")) { 
+                registroVentas = registroVentas.filter(v => v.cartones[0] !== primerId); 
+                localStorage.setItem('registroBingo', JSON.stringify(registroVentas)); 
+                sincronizarVentasConServidor(); // Sincroniza el borrado
+                generarReporte(); 
+            } 
+        }
+
+        // Buscador y gestor de pagos express
+        function buscar() { 
+            const idBusqueda = document.getElementById('searchID').value.toUpperCase().trim(); 
+            const res = document.getElementById('resBusqueda'); 
+            const index = registroVentas.findIndex(v => v.cartones.includes(idBusqueda)); 
+            
+            if(index !== -1) { 
+                const p = registroVentas[index]; 
+                res.innerHTML = `
+                    <div onclick="cerrarBusqueda()" class="close-search">X</div>
+                    <span class="status-badge ${p.pagado ? 'bg-paid' : 'bg-pending'}">${p.pagado ? 'PAGADO' : 'PENDIENTE'}</span><br><br>
+                    <b>${p.nombre}</b><br>
+                    <button onclick="togglePago(${index})" style="margin-top: 10px; background: var(--info); color: white;">CAMBIAR ESTADO</button>`; 
+            } else { 
+                res.innerHTML = `<div onclick="cerrarBusqueda()" class="close-search">X</div>❌ No encontrado`; 
+            } 
+        }
+
+        // Switch de estado de pago
+        function togglePago(index) { 
+            registroVentas[index].pagado = !registroVentas[index].pagado; 
+            localStorage.setItem('registroBingo', JSON.stringify(registroVentas)); 
+            sincronizarVentasConServidor(); // Sincroniza el cambio de pago
+            buscar(); 
+        }
+
+        function cerrarBusqueda() { 
+            document.getElementById('resBusqueda').innerHTML = "Esperando ID..."; 
+            document.getElementById('searchID').value = "";
+        }
+
+        // Gestión de Ganadores
+        function agregarGanador() { 
+            const sorteo = document.getElementById('winSorteo').value || "Premio General"; 
+            const idsInput = document.getElementById('winID').value.toUpperCase().trim(); 
+            
+            if(!idsInput) return alert("Debes ingresar al menos un ID"); 
+            
+            const listaIDs = idsInput.split(',').map(i => i.trim()).filter(i => i !== ""); 
+            
+            listaIDs.forEach((id, index) => {
+                const venta = registroVentas.find(v => v.cartones.includes(id)); 
+                const nombre = venta ? venta.nombre : (document.getElementById('winNombre').value || "Desconocido"); 
+                const tel = venta ? venta.tel : (document.getElementById('winTel').value || "Sin teléfono"); 
+                
+                ganadores.push({ 
+                    id: Date.now() + index + Math.random(), 
+                    sorteo: sorteo, 
+                    cartonID: id, 
+                    nombre: nombre, 
+                    telefono: tel, 
+                    nota: "" 
+                }); 
+            }); 
+            
+            localStorage.setItem('ganadoresBingo', JSON.stringify(ganadores)); 
+            renderGanadores(); 
+            
+            // Limpieza
+            document.getElementById('winID').value = ""; 
+            document.getElementById('winNombre').value = ""; 
+            document.getElementById('winTel').value = ""; 
+        }
+
+        function renderGanadores() { 
+            const container = document.getElementById('ganadoresContainer'); 
+            container.innerHTML = ""; 
+            ganadores.forEach(g => { 
+                container.innerHTML += `
+                    <div class="card-ganador">
+                        <button onclick="eliminarIndividual(${g.id})" style="position:absolute; right:10px; top:10px; background:none; border:none; color:white; font-size:18px; cursor:pointer;">✕</button>
+                        <h3>${g.sorteo}</h3>
+                        <div class="info-ganador">
+                            <b>🎟️ ID:</b> <span style="color:var(--amarillo)">${g.cartonID}</span><br>
+                            <b>👤 NOMBRE:</b> ${g.nombre}<br>
+                            <b>📞 TEL:</b> ${g.telefono}
+                        </div>
+                        <textarea class="nota-pago" onchange="actualizarNota(${g.id}, this.value)" placeholder="Notas de pago, entrega, etc...">${g.nota}</textarea>
+                    </div>`; 
+            }); 
+        }
+
+        function eliminarIndividual(id) { 
+            if (confirm("¿Eliminar este ganador de la lista?")) {
+                ganadores = ganadores.filter(g => g.id !== id); 
+                localStorage.setItem('ganadoresBingo', JSON.stringify(ganadores)); 
+                renderGanadores(); 
+            }
+        }
+
+        function actualizarNota(id, val) { 
+            const g = ganadores.find(v => v.id === id); 
+            if(g) { 
+                g.nota = val; 
+                localStorage.setItem('ganadoresBingo', JSON.stringify(ganadores)); 
+            } 
+        }
+
+        // Resets Globales de Base
+        function borrarVentas() { 
+            if(confirm("¿Estás seguro de que deseas reiniciar TODAS las ventas registradas? Esto no se puede deshacer.")) { 
+                registroVentas = []; 
+                localStorage.setItem('registroBingo', "[]"); 
+                sincronizarVentasConServidor(); // Sincroniza base vacía
+                location.reload(); 
+            }
+        }
+
+        function borrarGanadores() { 
+            if(confirm("¿Deseas limpiar todo el registro de ganadores actuales?")) { 
+                ganadores = []; 
+                localStorage.setItem('ganadoresBingo', "[]"); 
+                renderGanadores(); 
+            }
+        }
+
+        // Utilidad rápida para portapapeles
+        function copiarIdsPagados() { 
+            const pagados = registroVentas.filter(v => v.pagado); 
+            if(pagados.length === 0) return alert("No hay registros pagados."); 
+            const listaIds = pagados.flatMap(v => v.cartones).join(', '); 
+            
+            navigator.clipboard.writeText(listaIds).then(() => {
+                alert("✅ Se han copiado al portapapeles los IDs de los cartones pagados:\n" + listaIds);
+            }); 
+        }
+
+        // Auto-completado de campos si el ID ya tiene venta asociada
+        function buscarDatosGanador() { 
+            const idsInput = document.getElementById('winID').value.toUpperCase().trim(); 
+            if(!idsInput) return; 
+            const primerID = idsInput.split(',')[0].trim(); 
+            const ventaEncontrada = registroVentas.find(v => v.cartones.includes(primerID)); 
+            
+            if(ventaEncontrada) { 
+                document.getElementById('winNombre').value = ventaEncontrada.nombre; 
+                document.getElementById('winTel').value = ventaEncontrada.tel; 
+            } 
+        }
     </script>
 </body>
 </html>
