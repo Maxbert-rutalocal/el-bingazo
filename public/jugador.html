@@ -2,540 +2,226 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EL BINGAZO - JUGADOR</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mis Cartones - El Bingazo</title>
+    <script src="/socket.io/socket.io.js"></script>
     <style>
-        :root {
-            --primary: #ff9900;
-            --secondary: #1e90ff;
-            --bg: #0b0b0f;
-            --surface: #161622;
-            --text: #ffffff;
-            --accent: #27ae60;
-            --danger: #e74c3c;
-            --win-gold: #ffd700;
-            --board-bg: #000000;
-        }
+        :root { --primary: #ff9900; --bg: #0d0d13; --surface: #161622; --text: #ffffff; --success: #2ec4b6; --danger: #e74c3c; }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: var(--bg); color: var(--text); margin: 0; padding: 10px; text-align: center; }
+        .container { max-width: 480px; margin: 0 auto; }
+        .header { background: var(--surface); padding: 15px; border-radius: 12px; margin-bottom: 12px; border: 1px solid #232335; }
+        .card-login { background: var(--surface); padding: 25px 20px; border-radius: 16px; border: 1px solid #232335; margin-top: 30px; }
+        input { width: 100%; padding: 14px; font-size: 16px; text-transform: uppercase; border-radius: 8px; border: 2px solid #33334c; background: #07070a; color: #fff; text-align: center; font-weight: bold; margin-bottom: 15px; }
+        input:focus { border-color: var(--primary); outline: none; }
+        .btn-add { background: var(--primary); color: #000; border: none; padding: 14px; font-size: 16px; font-weight: bold; width: 100%; border-radius: 8px; cursor: pointer; transition: 0.2s; margin-bottom: 10px;}
+        
+        .tabs-container { display: flex; gap: 8px; overflow-x: auto; padding: 5px 0 10px 0; margin-bottom: 10px; }
+        .tab-btn { background: #232335; color: #a0a0b0; border: 1px solid #33334c; padding: 10px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; white-space: nowrap; }
+        .tab-btn.active { background: var(--primary); color: #000; }
+        
+        .mode-container { display: flex; gap: 10px; background: #232335; padding: 6px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #33334c;}
+        .mode-btn { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.3s; }
+        .mode-manual { background: var(--primary); color: #000; }
+        .mode-auto { background: transparent; color: #a0a0b0; }
 
-        * { box-sizing: border-box; }
-
-        body {
-            background: var(--bg);
-            color: var(--text);
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            margin: 0;
-            padding: 10px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 480px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-
-        header {
-            text-align: center;
-            padding: 15px 10px;
-            background: linear-gradient(135deg, #2a1b4e, #0b0b0f);
-            border-radius: 16px;
-            border: 1px solid #3d2b7a;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        }
-
-        h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 900;
-            letter-spacing: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--win-gold));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-transform: uppercase;
-        }
-
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 11px;
-            margin-top: 10px;
-            color: #aaa;
-        }
-
-        .badge {
-            padding: 4px 8px;
-            border-radius: 20px;
-            font-weight: bold;
-        }
-        .bg-online { background: rgba(39, 174, 96, 0.2); color: #2ecc71; border: 1px solid #2ecc71; }
-        .bg-offline { background: rgba(231, 76, 60, 0.2); color: #e74c3c; border: 1px solid #e74c3c; }
-
-        /* PANEL DE BÚSQUEDA */
-        .card-selector {
-            background: var(--surface);
-            padding: 20px;
-            border-radius: 16px;
-            border: 1px solid #2d2d3f;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        }
-
-        .card-selector label {
-            font-size: 13px;
-            font-weight: bold;
-            color: var(--secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .input-group {
-            display: flex;
-            gap: 8px;
-        }
-
-        input[type="text"] {
-            flex: 1;
-            padding: 14px;
-            border-radius: 10px;
-            border: 2px solid #2d2d3f;
-            background: #0b0b0f;
-            color: #fff;
-            font-size: 16px;
-            font-weight: bold;
-            text-transform: uppercase;
-            text-align: center;
-            transition: 0.3s;
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--secondary);
-            outline: none;
-            box-shadow: 0 0 10px rgba(30, 144, 255, 0.3);
-        }
-
-        .btn {
-            background: var(--secondary);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            padding: 0 20px;
-            font-size: 14px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: 0.2s;
-            text-transform: uppercase;
-        }
-
-        .btn:active { transform: scale(0.95); }
-
-        /* DISEÑO DE LA TABLA BINGO */
-        .bingo-card {
-            background: var(--surface);
-            border-radius: 20px;
-            padding: 15px;
-            border: 2px solid #2d2d3f;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: none; /* Se muestra al cargar un cartón */
-            flex-direction: column;
-            gap: 10px;
-            animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(20px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .card-header-info {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #2d2d3f;
-            padding-bottom: 10px;
-            margin-bottom: 5px;
-        }
-
-        .card-id-badge {
-            background: linear-gradient(135deg, var(--primary), #ff5500);
-            color: #000;
-            font-size: 18px;
-            font-weight: 900;
-            padding: 4px 14px;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(255, 153, 0, 0.3);
-        }
-
-        .grid-header {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            text-align: center;
-        }
-
-        .letter-cell {
-            font-size: 24px;
-            font-weight: 900;
-            color: #fff;
-            padding: 8px 0;
-            text-shadow: 0 0 10px rgba(255,255,255,0.3);
-        }
-        .letter-cell:nth-child(1) { color: #ff5e57; }
-        .letter-cell:nth-child(2) { color: #ffdd59; }
-        .letter-cell:nth-child(3) { color: #0be881; }
-        .letter-cell:nth-child(4) { color: #3c40c6; }
-        .letter-cell:nth-child(5) { color: #05c46b; }
-
-        .grid-board {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-            background: var(--board-bg);
-            padding: 8px;
-            border-radius: 12px;
-            border: 1px solid #2d2d3f;
-        }
-
-        .board-cell {
-            aspect-ratio: 1;
-            background: #11111a;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: bold;
-            color: #ddd;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            position: relative;
-            border: 1px solid #1a1a26;
-        }
-
-        /* Marcado estándar */
-        .board-cell.marked {
-            background: radial-gradient(circle, #ff9900 0%, #cc6600 100%);
-            color: #000;
-            font-weight: 900;
-            box-shadow: 0 0 12px var(--primary);
-            border-color: #ffaa33;
-            transform: scale(0.95);
-        }
-
-        /* Celda central libre */
-        .board-cell.free-cell {
-            background: radial-gradient(circle, #3d2b7a 0%, #161622 100%);
-            color: var(--win-gold);
-            font-size: 11px;
-            font-weight: 900;
-            border: 1px dashed var(--win-gold);
-        }
-
-        .board-cell.free-cell.marked {
-            background: radial-gradient(circle, var(--win-gold) 0%, #cc9900 100%);
-            color: #000;
-            box-shadow: 0 0 15px var(--win-gold);
-        }
-
-        /* Última bola cantada */
-        .board-cell.just-marked {
-            animation: pulse-glow 1.5s infinite alternate;
-        }
-
-        @keyframes pulse-glow {
-            0% { box-shadow: 0 0 5px var(--primary); transform: scale(0.93); }
-            100% { box-shadow: 0 0 20px var(--primary); transform: scale(1.02); }
-        }
-
-        /* PANEL DE BOLAS CANTADAS RECIENTES */
-        .recent-balls-panel {
-            background: var(--surface);
-            padding: 15px;
-            border-radius: 16px;
-            border: 1px solid #2d2d3f;
-        }
-
-        .recent-title {
-            font-size: 12px;
-            font-weight: bold;
-            color: #888;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .balls-row {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 5px;
-        }
-
-        .ball-pill {
-            min-width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            background: #2d2d3f;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 900;
-            font-size: 14px;
-            color: #fff;
-            border: 2px solid #3d3d5c;
-            flex-shrink: 0;
-        }
-
-        .ball-pill.active {
-            background: radial-gradient(circle at 35% 35%, #fff, var(--secondary) 30%, #000 90%);
-            border-color: #fff;
-            color: #000;
-            box-shadow: 0 0 10px rgba(30, 144, 255, 0.5);
-        }
+        .bingo-wrapper { background: #ffffff; color: #111116; padding: 12px; border-radius: 16px; margin-bottom: 15px; }
+        .bingo-letters { display: grid; grid-template-columns: repeat(5, 1fr); font-size: 26px; font-weight: 900; color: #ff9900; margin-bottom: 8px; }
+        .bingo-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+        .cell { aspect-ratio: 1; background: #f0f2f5; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; cursor: pointer; border-bottom: 3px solid #dbdee4; }
+        .cell.marked { background: var(--success); color: #fff; border-bottom-color: #1b8a7f; }
+        .cell.free-space { background: var(--danger); color: #fff; font-size: 11px; font-weight: 900; }
+        .status-bar { font-size: 15px; font-weight: bold; color: var(--primary); margin-top: 10px; }
     </style>
 </head>
 <body>
-
 <div class="container">
-    <header>
-        <h1>EL BINGAZO LIVE</h1>
-        <div class="status-bar">
-            <span>SALA DE TRANSMISIÓN</span>
-            <span id="connectionStatus" class="badge bg-offline">CONECTANDO...</span>
-        </div>
-    </header>
-
-    <div class="card-selector">
-        <label>Ingresa tu ID de Cartón</label>
-        <div class="input-group">
-            <input type="text" id="cardIdInput" placeholder="Ej: 4A2" maxlength="6">
-            <button class="btn" onclick="buscarYAsignarCarton()">Cargar</button>
-        </div>
+    <div id="viewLogin" class="card-login">
+        <h2 style="margin-top:0; color:var(--primary);">MIS CARTONES</h2>
+        <p style="color:#a0a0b0; font-size:14px; margin-bottom:20px;">Ingresa tus datos para empezar a jugar.</p>
+        <input type="text" id="nombreInput" placeholder="TU NOMBRE Y APELLIDO">
+        <input type="tel" id="telefonoInput" placeholder="TU NÚMERO DE TELÉFONO">
+        <input type="text" id="cartonIdInput" placeholder="ID DEL CARTÓN (EJ: 12)">
+        <button class="btn-add" onclick="solicitarCartonServidor()">VINCULAR MI CARTÓN ➕</button>
+        <div id="listaMisIds" style="margin-top:20px; text-align:left; color:#a0a0b0;"></div>
+        <button id="btnEmpezarJuego" class="btn-add" style="background:var(--success); display:none;" onclick="mostrarPantallaJuego()">IR A JUGAR EN VIVO ➡️</button>
     </div>
 
-    <div class="bingo-card" id="bingoCardContainer">
-        <div class="card-header-info">
-            <span style="font-weight: bold; color: #888;">ID CARTÓN</span>
-            <span class="card-id-badge" id="displayCardId">---</span>
+    <div id="viewGame" style="display: none;">
+        <div class="header">
+            <h1 style="margin: 0; color: var(--primary);">EL BINGAZO LIVE</h1>
+            
+            <div style="display:flex; justify-content:center; align-items:center; gap:10px; margin-top:8px;">
+                <span style="font-size: 14px; font-weight: bold;">Estado de pago:</span>
+                <div id="paymentIndicator" style="width: 16px; height: 16px; border-radius: 50%; background: red; box-shadow: 0 0 12px red; transition: 0.3s;"></div>
+            </div>
+            
+            <button id="btnPagar" class="btn-add" style="background:#25D366; color:#fff; margin-top: 10px; font-size: 13px;" onclick="notificarPago()">📲 ENVIAR COMPROBANTE</button>
+            <div class="status-bar" id="liveStatus">Esperando primera balota...</div>
         </div>
 
-        <div class="grid-header">
-            <div class="letter-cell">B</div>
-            <div class="letter-cell">I</div>
-            <div class="letter-cell">N</div>
-            <div class="letter-cell">G</div>
-            <div class="letter-cell">O</div>
+        <div class="tabs-container" id="cartonTabs"></div>
+
+        <div class="mode-container">
+            <button id="btnModoManual" class="mode-btn mode-manual" onclick="cambiarModo('manual')">MANUAL ✍️</button>
+            <button id="btnModoAuto" class="mode-btn mode-auto" onclick="cambiarModo('auto')">AUTO 🤖</button>
         </div>
 
-        <div class="grid-board" id="boardGrid"></div>
-    </div>
-
-    <div class="recent-balls-panel">
-        <div class="recent-title">Últimas Bolas Cantadas</div>
-        <div class="balls-row" id="recentBalls">
-            <div style="color: #555; font-size: 13px; padding: 10px;">Esperando primera bola...</div>
+        <div class="bingo-wrapper">
+            <div class="bingo-letters"><div>B</div><div>I</div><div>N</div><div>G</div><div>O</div></div>
+            <div id="bingoGridDisplay" class="bingo-grid"></div>
         </div>
+
+        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+            <button onclick="pedirPausa()" class="btn-add" style="background: var(--danger);">⏸ PAUSA</button>
+            <button onclick="cantarBingo()" class="btn-add" style="background: #ffd700; color: #000;">🏆 ¡BINGO!</button>
+        </div>
+        <button class="btn-add" style="background:#232335; color:#fff;" onclick="regresarALogin()">➕ AGREGAR OTRO</button>
     </div>
 </div>
 
 <script>
-    let socket;
-    let dbCartones = []; // Almacenará la base de datos de cartones cargada localmente
-    let miCartonActivo = null;
-    let bolasCantadas = new Set();
-    let ultimaBolaCantada = null;
+    const socket = io();
+    let cartonesCargados = {}, idCartonActivo = null, bolasCantadasGlobal = new Set();
+    let nombreJugador = "", telefonoJugador = "";
+    let modoJuego = 'manual';
 
-    // 1. Cargar la base de datos de cartones de manera asíncrona
-    async function cargarBaseDatosCartones() {
-        try {
-            const respuesta = await fetch('/cartones.json');
-            if (respuesta.ok) {
-                dbCartones = await respuesta.json();
-                console.log(`Base de datos cargada: ${dbCartones.length} cartones.`);
-            } else {
-                console.error("No se pudo leer cartones.json directamente de la raíz.");
-            }
-        } catch (error) {
-            console.error("Error al cargar la base de datos de cartones:", error);
+    socket.on('ESTADO_INICIAL', (payload) => {
+        bolasCantadasGlobal.clear();
+        if (payload?.data?.bolasSacadas) payload.data.bolasSacadas.forEach(b => bolasCantadasGlobal.add(Number(b)));
+        if (idCartonActivo) redibujarCartonActual();
+    });
+
+    socket.on('ENTREGAR_CARTON', (msg) => {
+        if (!cartonesCargados[msg.carton.id]) {
+            cartonesCargados[msg.carton.id] = { id: msg.carton.id, grid: msg.carton.grid, marcadosManual: new Set() };
         }
-    }
+        actualizarListaIngreso();
+    });
 
-    // 2. Conexión en tiempo real por WebSockets
-    function conectarJugadorWS() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const host = window.location.host;
-        socket = new WebSocket(`${protocol}//${host}`);
+    socket.on('NUEVA_BOLA', (msg) => {
+        bolasCantadasGlobal.add(Number(msg.bola));
+        document.getElementById('liveStatus').textContent = `🚨 BALOTA EN VIVO: ${msg.letra} - ${msg.bola}`;
+        if (modoJuego === 'auto') redibujarCartonActual(); 
+    });
 
-        socket.onopen = () => {
-            console.log("Conectado al servidor de El Bingazo");
-            const status = document.getElementById('connectionStatus');
-            status.innerText = "🟢 EN VIVO";
-            status.className = "badge bg-online";
-        };
+    socket.on('REINICIAR_JUEGO', () => {
+        bolasCantadasGlobal.clear();
+        Object.keys(cartonesCargados).forEach(id => cartonesCargados[id].marcadosManual.clear());
+        document.getElementById('liveStatus').textContent = "🔄 Juego reiniciado.";
+        redibujarCartonActual();
+    });
 
-        socket.onclose = () => {
-            console.log("Desconectado. Reintentando...");
-            const status = document.getElementById('connectionStatus');
-            status.innerText = "🔴 DESCONECTADO";
-            status.className = "badge bg-offline";
-            setTimeout(conectarJugadorWS, 3000);
-        };
+    socket.on('ERROR_CARTON', (msg) => alert(msg.mensaje));
 
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            console.log("Mensaje recibido:", data);
-
-            switch(data.type) {
-                case 'BOLA_SACADA':
-                    registrarBola(data.numero, data.letra);
-                    break;
-                case 'SYNC_BOLAS':
-                    sincronizarBolas(data.bolas, data.ultimaBola);
-                    break;
-                case 'BARRIDO':
-                    reiniciarTablero();
-                    break;
+    socket.on('CARTON_ACTIVADO', (data) => {
+        if (cartonesCargados[data.cartonId]) {
+            const ind = document.getElementById('paymentIndicator'), btnPago = document.getElementById('btnPagar');
+            if (data.pagado) {
+                ind.style.background = 'var(--success)'; ind.style.boxShadow = '0 0 15px var(--success)';
+                if(btnPago) btnPago.style.display = 'none';
+                alert(`✅ ¡Tu cartón ID: ${data.cartonId} ha sido activado para jugar!`);
+            } else {
+                ind.style.background = 'red'; ind.style.boxShadow = '0 0 15px red';
+                if(btnPago) btnPago.style.display = 'block';
             }
-        };
-    }
-
-    // Inicializar al cargar la página
-    window.addEventListener('load', () => {
-        cargarBaseDatosCartones();
-        conectarJugadorWS();
-        
-        // Cargar cartón si ya estaba guardado en la sesión
-        const guardado = localStorage.getItem('miCartonId');
-        if (guardado) {
-            document.getElementById('cardIdInput').value = guardado;
-            setTimeout(() => buscarYAsignarCarton(), 800); // Dar un margen para que cargue el JSON
         }
     });
 
-    // 3. Buscar el cartón cargado en el JSON
-    function buscarYAsignarCarton() {
-        const inputId = document.getElementById('cardIdInput').value.trim().toUpperCase();
-        if (!inputId) return alert("Por favor ingresa un ID.");
-
-        if (dbCartones.length === 0) {
-            return alert("La base de datos de cartones aún se está cargando. Inténtalo de nuevo en 2 segundos.");
-        }
-
-        const cartonEncontrado = dbCartones.find(c => c.id.toUpperCase() === inputId);
-
-        if (!cartonEncontrado) {
-            return alert("¡ID de cartón no encontrado en la base de datos!");
-        }
-
-        miCartonActivo = cartonEncontrado;
-        localStorage.setItem('miCartonId', miCartonActivo.id);
-
-        document.getElementById('displayCardId').textContent = miCartonActivo.id;
-        document.getElementById('bingoCardContainer').style.display = 'flex';
-
-        renderizarCarton();
-    }
-
-    // 4. Pintar el cartón en la pantalla del celular
-    function renderizarCarton() {
-        const boardGrid = document.getElementById('boardGrid');
-        boardGrid.innerHTML = '';
-
-        if (!miCartonActivo) return;
-
-        // El cartón tiene un grid de 5x5
-        for (let fila = 0; fila < 5; fila++) {
-            for (let col = 0; col < 5; col++) {
-                const valor = miCartonActivo.grid[fila][col];
-                const cell = document.createElement('div');
-                cell.className = 'board-cell';
-
-                if (valor === 0 || valor === "FREE") {
-                    cell.classList.add('free-cell', 'marked');
-                    cell.innerHTML = 'FREE<br>⭐';
-                    cell.id = 'cell-free';
-                } else {
-                    cell.textContent = valor;
-                    cell.id = `cell-num-${valor}`;
-                    
-                    // Si este número ya fue cantado, lo marcamos de una vez
-                    if (bolasCantadas.has(valor)) {
-                        cell.classList.add('marked');
-                        if (valor === ultimaBolaCantada) {
-                            cell.classList.add('just-marked');
-                        }
-                    }
-                }
-                boardGrid.appendChild(cell);
-            }
-        }
-    }
-
-    // 5. Procesar una nueva bola cantada
-    function registrarBola(numero, letra) {
-        bolasCantadas.add(numero);
-        ultimaBolaCantada = numero;
-
-        // Quitar efectos previos de "just-marked"
-        document.querySelectorAll('.board-cell').forEach(c => c.classList.remove('just-marked'));
-
-        // Marcar la celda correspondiente si existe en este cartón
-        const celda = document.getElementById(`cell-num-${numero}`);
-        if (celda) {
-            celda.classList.add('marked', 'just-marked');
-        }
-
-        actualizarHistorialVisual();
-    }
-
-    // Sincronizar estado completo si el jugador entra a mitad de la partida
-    function sincronizarBolas(bolas, ultima) {
-        bolasCantadas = new Set(bolas);
-        ultimaBolaCantada = ultima ? ultima.num : null;
+    function solicitarCartonServidor() {
+        const nombre = document.getElementById('nombreInput').value.trim();
+        const tel = document.getElementById('telefonoInput').value.trim();
+        const id = document.getElementById('cartonIdInput').value.trim().toUpperCase();
         
-        if (miCartonActivo) {
-            renderizarCarton();
-        }
-        actualizarHistorialVisual();
+        if (!nombre || !tel || !id) return alert("Por favor, llena los tres campos para continuar.");
+        if (cartonesCargados[id]) return alert("Este cartón ya está vinculado.");
+
+        nombreJugador = nombre; telefonoJugador = tel;
+        socket.emit('JUGADOR_REGISTRARSE', { nombre, tel, cartonId: id });
+        socket.emit('SOLICITAR_CARTON', { id });
+        document.getElementById('cartonIdInput').value = "";
     }
 
-    // Reiniciar tablero por barrido
-    function reiniciarTablero() {
-        bolasCantadas.clear();
-        ultimaBolaCantada = null;
-        
-        if (miCartonActivo) {
-            renderizarCarton();
-        }
-        actualizarHistorialVisual();
+    function notificarPago() {
+        const numeroAdmin = "570000000000"; 
+        const msj = `Hola, soy ${nombreJugador}. Envío comprobante para activar mi cartón ID: ${idCartonActivo}`;
+        window.open(`https://wa.me/${numeroAdmin}?text=${encodeURIComponent(msj)}`, '_blank');
     }
 
-    // Actualizar la fila de bolas recientes
-    function actualizarHistorialVisual() {
-        const container = document.getElementById('recentBalls');
-        container.innerHTML = '';
+    function pedirPausa() { socket.emit('JUGADOR_PAUSA', { nombre: nombreJugador, cartonId: idCartonActivo }); alert("Pausa solicitada"); }
+    function cantarBingo() { socket.emit('JUGADOR_BINGO', { nombre: nombreJugador, cartonId: idCartonActivo }); alert("Bingo enviado"); }
 
-        if (bolasCantadas.size === 0) {
-            container.innerHTML = '<div style="color: #555; font-size: 13px; padding: 10px;">Esperando primera bola...</div>';
-            return;
+    function actualizarListaIngreso() {
+        const ids = Object.keys(cartonesCargados);
+        if(ids.length > 0) {
+            document.getElementById('listaMisIds').innerHTML = `IDs vinculados: <span style="color:var(--primary); font-weight:bold;">${ids.join(', ')}</span>`;
+            document.getElementById('btnEmpezarJuego').style.display = "block";
+            document.getElementById('nombreInput').style.display = 'none';
+            document.getElementById('telefonoInput').style.display = 'none';
         }
+    }
 
-        // Mostrar las últimas 6 bolas cantadas (reversa)
-        const arrayBolas = Array.from(bolasCantadas).reverse().slice(0, 6);
-        arrayBolas.forEach((num, index) => {
-            const letra = ['B', 'I', 'N', 'G', 'O'][Math.floor((num - 1) / 15)];
-            const pill = document.createElement('div');
-            pill.className = `ball-pill ${index === 0 ? 'active' : ''}`;
-            pill.textContent = `${letra}${num}`;
-            container.appendChild(pill);
+    function mostrarPantallaJuego() {
+        document.getElementById('viewLogin').style.display = 'none';
+        document.getElementById('viewGame').style.display = 'block';
+        idCartonActivo = Object.keys(cartonesCargados)[0];
+        generarPestañas(); redibujarCartonActual();
+    }
+
+    function generarPestañas() {
+        const container = document.getElementById('cartonTabs'); container.innerHTML = '';
+        Object.keys(cartonesCargados).forEach(id => {
+            const btn = document.createElement('button');
+            btn.className = `tab-btn ${id === idCartonActivo ? 'active' : ''}`;
+            btn.textContent = `ID ${id}`;
+            btn.onclick = () => { idCartonActivo = id; generarPestañas(); redibujarCartonActual(); };
+            container.appendChild(btn);
         });
     }
+
+    function cambiarModo(modo) {
+        modoJuego = modo;
+        const btnManual = document.getElementById('btnModoManual'), btnAuto = document.getElementById('btnModoAuto');
+        if (modo === 'manual') {
+            btnManual.className = 'mode-btn mode-manual';
+            btnAuto.className = 'mode-btn mode-auto';
+        } else {
+            btnManual.className = 'mode-btn mode-auto';
+            btnAuto.className = 'mode-btn mode-manual';
+            btnAuto.style.background = 'var(--success)';
+            btnAuto.style.color = '#000';
+            btnManual.style.background = 'transparent';
+        }
+        redibujarCartonActual();
+    }
+
+    function redibujarCartonActual() {
+        if (!idCartonActivo || !cartonesCargados[idCartonActivo]) return;
+        const carton = cartonesCargados[idCartonActivo];
+        const display = document.getElementById('bingoGridDisplay'); display.innerHTML = '';
+
+        carton.grid.forEach(fila => fila.forEach(valor => {
+            const cell = document.createElement('div');
+            const num = Number(valor);
+            cell.className = (valor === "FREE" || valor === 0) ? 'cell free-space' : 'cell';
+            cell.textContent = (valor === "FREE" || valor === 0) ? "LIBRE" : valor;
+            
+            if (modoJuego === 'auto') {
+                if (bolasCantadasGlobal.has(num) || carton.marcadosManual.has(num)) cell.classList.add('marked');
+            } else {
+                if (carton.marcadosManual.has(num)) cell.classList.add('marked');
+            }
+            
+            cell.onclick = () => {
+                if (num === 0) return;
+                carton.marcadosManual.has(num) ? carton.marcadosManual.delete(num) : carton.marcadosManual.add(num);
+                redibujarCartonActual();
+            };
+            display.appendChild(cell);
+        }));
+    }
+
+    function regresarALogin() { document.getElementById('viewGame').style.display = 'none'; document.getElementById('viewLogin').style.display = 'block'; }
 </script>
 </body>
 </html>

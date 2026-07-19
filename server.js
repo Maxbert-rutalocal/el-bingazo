@@ -1,118 +1,90 @@
 const express = require('express');
 const http = require('http');
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server });
+const io = new Server(server, { cors: { origin: "*" } });
 
-// Servir la carpeta pública
 app.use(express.static(path.join(__dirname, 'public')));
 
-// RUTA FORZADA para el jugador (Evita cacheos agresivos de navegadores y CDN en producción)
-app.get('/jugador.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'jugador.html'), { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, private' } });
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-app.get('/jugador', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'jugador.html'));
-});
+const dataDir = path.join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+const gestionPath = path.join(dataDir, 'gestion.json');
+if (!fs.existsSync(gestionPath)) fs.writeFileSync(gestionPath, '[]');
+const cartonesPath = path.join(dataDir, 'cartones.json');
+if (!fs.existsSync(cartonesPath)) fs.writeFileSync(cartonesPath, '[]');
 
-// Cargar la base de datos de cartones en memoria
-let bangueraCartones = [];
-try {
-    const data = fs.readFileSync(path.join(__dirname, 'public', 'cartones.json'), 'utf8');
-    bangueraCartones = JSON.parse(data);
-    console.log(`✅ Base de datos cargada exitosamente: ${bangueraCartones.length} cartones listos.`);
-} catch (err) {
-    console.error("❌ ERROR CRÍTICO: No se pudo leer 'cartones.json' en la carpeta public/.", err);
-}
+function getGestion() { try { return JSON.parse(fs.readFileSync(gestionPath, 'utf-8')); } catch (e) { return []; } }
+function saveGestion(data) { fs.writeFileSync(gestionPath, JSON.stringify(data, null, 2)); }
+function getCartones() { try { return JSON.parse(fs.readFileSync(cartonesPath, 'utf-8')); } catch (e) { return []; } }
 
-// Historial del estado del juego
-let estadoJuego = {
-    bolasSacadas: [], // Aquí guardamos las balotas que vas cantando (ej: [15, 42, 75])
-    titulo: "EL BINGAZO LIVE"
-};
+let bolasSacadasGlobal = [];
 
-// Conexión de usuarios y mesa de control
-wss.on('connection', (ws) => {
-    console.log('🔌 Nuevo dispositivo conectado al sistema');
+io.on('connection', (socket) => {
+    socket.emit('ESTADO_INICIAL', { data: { bolasSacadas: bolasSacadasGlobal } });
+    socket.emit('GESTION_NUEVO_REGISTRO', getGestion()); 
 
-    // Al conectarse, enviamos inmediatamente las bolas que ya salieron para que se sincronice
-    ws.send(JSON.stringify({ type: 'ESTADO_INICIAL', data: estadoJuego }));
+    // Eventos del Admin
+    socket.on('ADMIN_SACAR_BOLA', (data) => {
+        bolasSacadasGlobal.push(data.bola);
+        io.emit('NUEVA_BOLA', data);
+    });
 
-    ws.on('message', (message) => {
-        try {
-            const evento = JSON.parse(message);
+    socket.on('ADMIN_REINICIAR_JUEGO', () => {
+        bolasSacadasGlobal = [];
+        io.emit('REINICIAR_JUEGO');
+    });
 
-            switch (evento.type) {
-                case 'SOLICITAR_CARTON':
-                    // Buscamos el cartón ignorando mayúsculas/minúsculas
-                    const cartonEncontrado = bangueraCartones.find(
-                        c => String(c.id).toUpperCase() === String(evento.id).toUpperCase()
-                    );
-                    
-                    if (cartonEncontrado) {
-                        // Enviamos el cartón al jugador
-                        ws.send(JSON.stringify({ type: 'ENTREGAR_CARTON', carton: cartonEncontrado }));
+    socket.on('ADMIN_DECLARAR_GANADOR', (data) => {
+        io.emit('GESTION_REGISTRAR_GANADOR_AUTO', data);
+    });
 
-                        // 📢 TRANSMITIR EL REGISTRO: Enviamos los datos del nuevo jugador (nombre, celular y ID del cartón)
-                        // a todas las pantallas, incluyendo el panel de 'gestion.html'
-                        broadcast({
-                            type: 'NUEVO_JUGADOR_CONECTADO',
-                            datos: {
-                                id: evento.id,
-                                nombre: evento.nombre || 'Anónimo',
-                                telefono: evento.telefono || 'Sin número'
-                            }
-                        });
-                    } else {
-                        ws.send(JSON.stringify({ type: 'ERROR_CARTON', mensaje: `El cartón "${evento.id}" no existe.` }));
-                    }
-                    break;
+    // --- REINICIO TOTAL DE VENTAS (SOLUCIONA EL FANTASMA) ---
+    socket.on('ADMIN_RESET_VENTAS', () => {
+        saveGestion([]); 
+        io.emit('GESTION_NUEVO_REGISTRO', []); 
+        io.emit('RESETEO_GLOBAL_VENTAS'); // Ordena a las pantallas refrescarse
+    });
 
-                case 'BOLA_SACADA':
-                    // Registramos la bola en el servidor si no estaba
-                    if (!estadoJuego.bolasSacadas.includes(evento.bola)) {
-                        estadoJuego.bolasSacadas.push(evento.bola);
-                    }
-                    // Le avisamos a todos los celulares conectados
-                    broadcast({ type: 'NUEVA_BOLA', bola: evento.bola, letra: evento.letra });
-                    break;
+    // Eventos del Jugador
+    socket.on('JUGADOR_REGISTRARSE', (data) => {
+        const gestion = getGestion();
+        const existe = gestion.find(g => g.cartones.includes(data.cartonId));
+        if (!existe) {
+            gestion.push({ nombre: data.nombre, tel: data.tel, cartones: [data.cartonId], pagado: false });
+            saveGestion(gestion);
+        }
+        io.emit('GESTION_NUEVO_REGISTRO', getGestion()); 
+    });
 
-                case 'BARRIDO':
-                    // Reiniciar partida
-                    estadoJuego.bolasSacadas = [];
-                    broadcast({ type: 'REINICIAR_JUEGO' });
-                    break;
+    socket.on('SOLICITAR_CARTON', (data) => {
+        const cartones = getCartones();
+        const carton = cartones.find(c => String(c.id).toUpperCase() === String(data.id).toUpperCase());
+        if (carton) socket.emit('ENTREGAR_CARTON', { carton });
+        else socket.emit('ERROR_CARTON', { mensaje: 'Cartón no encontrado.' });
+    });
 
-                case 'CAMBIAR_TITULO':
-                    estadoJuego.titulo = evento.titulo;
-                    broadcast({ type: 'NUEVA_BOLA', actualizarTitulo: true, titulo: evento.titulo });
-                    break;
-            }
-        } catch (e) {
-            console.error("Error procesando mensaje socket:", e);
+    socket.on('JUGADOR_PAUSA', (data) => io.emit('ADMIN_ALERTA_PAUSA', data));
+    socket.on('JUGADOR_BINGO', (data) => io.emit('ADMIN_ALERTA_BINGO', data));
+
+    // Eventos de Gestión
+    socket.on('GESTION_TOGGLE_PAGO', (data) => {
+        const gestion = getGestion();
+        const registro = gestion.find(g => g.cartones.includes(data.cartonId));
+        if (registro) {
+            registro.pagado = data.pagado;
+            saveGestion(gestion);
+            io.emit('CARTON_ACTIVADO', { cartonId: data.cartonId, pagado: data.pagado });
+            io.emit('GESTION_NUEVO_REGISTRO', gestion); 
         }
     });
 });
 
-// Función para enviar datos a todos los clientes conectados simultáneamente
-function broadcast(data) {
-    wss.clients.forEach(client => {
-        if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify(data));
-        }
-    });
-}
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`====================================================`);
-    console.log(`🚀 ¡EL BINGAZO CORRIENDO EN TIEMPO REAL!`);
-    console.log(`👉 Mesa de Control: http://localhost:${PORT}/index.html`);
-    console.log(`👉 Teléfonos de Jugadores: http://localhost:${PORT}/jugador.html`);
-    console.log(`====================================================`);
-});
+server.listen(3000, () => console.log('🚀 Servidor activo en http://localhost:3000'));
