@@ -14,6 +14,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
+// --- SEGURIDAD DE ARCHIVOS ---
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
 const gestionPath = path.join(dataDir, 'gestion.json');
@@ -46,11 +47,11 @@ io.on('connection', (socket) => {
         io.emit('GESTION_REGISTRAR_GANADOR_AUTO', data);
     });
 
-    // --- REINICIO TOTAL DE VENTAS (SOLUCIONA EL FANTASMA) ---
+    // --- REINICIO TOTAL DE VENTAS ---
     socket.on('ADMIN_RESET_VENTAS', () => {
         saveGestion([]); 
         io.emit('GESTION_NUEVO_REGISTRO', []); 
-        io.emit('RESETEO_GLOBAL_VENTAS'); // Ordena a las pantallas refrescarse
+        io.emit('RESETEO_GLOBAL_VENTAS'); 
     });
 
     // Eventos del Jugador
@@ -87,4 +88,6 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(3000, () => console.log('🚀 Servidor activo en http://localhost:3000'));
+// --- CONFIGURACIÓN PARA RENDER ---
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => console.log(`🚀 Servidor activo en puerto ${PORT}`));
