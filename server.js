@@ -14,10 +14,10 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// --- SOLUCIÓN AL PROBLEMA WINDOWS VS LINUX (MAYÚSCULAS/MINÚSCULAS) ---
+// --- SOLUCIÓN AL PROBLEMA WINDOWS VS LINUX ---
 let dataDir = path.join(__dirname, 'data');
 if (fs.existsSync(path.join(__dirname, 'Data'))) {
-    dataDir = path.join(__dirname, 'Data'); // Si la carpeta está con D mayúscula, usa esa
+    dataDir = path.join(__dirname, 'Data');
 } else if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir);
 }
@@ -27,7 +27,7 @@ if (!fs.existsSync(gestionPath)) fs.writeFileSync(gestionPath, '[]');
 
 let cartonesPath = path.join(dataDir, 'cartones.json');
 if (!fs.existsSync(cartonesPath) && fs.existsSync(path.join(dataDir, 'Cartones.json'))) {
-    cartonesPath = path.join(dataDir, 'Cartones.json'); // Por si el archivo tiene C mayúscula
+    cartonesPath = path.join(dataDir, 'Cartones.json');
 }
 if (!fs.existsSync(cartonesPath)) fs.writeFileSync(cartonesPath, '[]');
 
@@ -36,9 +36,8 @@ function saveGestion(data) { fs.writeFileSync(gestionPath, JSON.stringify(data, 
 
 let cartonesGlobal = [];
 try {
-    console.log(`⏳ Buscando cartones en: ${cartonesPath}`);
     cartonesGlobal = JSON.parse(fs.readFileSync(cartonesPath, 'utf-8'));
-    console.log(`✅ ¡Éxito! Se cargaron ${cartonesGlobal.length} cartones en la memoria rápida.`);
+    console.log(`✅ ¡Éxito! Se cargaron ${cartonesGlobal.length} cartones.`);
 } catch (e) {
     console.error("❌ Error al cargar cartones:", e);
 }
@@ -79,16 +78,18 @@ io.on('connection', (socket) => {
         io.emit('GESTION_NUEVO_REGISTRO', getGestion()); 
     });
 
+    // --- MEJORA: AHORA REVISA SI ESTÁ PAGADO AL BUSCAR EL CARTÓN ---
     socket.on('SOLICITAR_CARTON', (data) => {
-        console.log(`🔍 Un jugador está buscando el cartón ID: ${data.id}`);
-        
-        const carton = cartonesGlobal.find(c => String(c.id).toUpperCase() === String(data.id).toUpperCase());
+        const idBuscado = String(data.id).toUpperCase();
+        const carton = cartonesGlobal.find(c => String(c.id).toUpperCase() === idBuscado);
         
         if (carton) {
-            console.log(`✅ Cartón ${data.id} encontrado y enviado.`);
-            socket.emit('ENTREGAR_CARTON', { carton });
+            const gestion = getGestion();
+            const registro = gestion.find(g => g.cartones.some(cId => String(cId).toUpperCase() === idBuscado));
+            const estaPagado = registro ? registro.pagado : false;
+
+            socket.emit('ENTREGAR_CARTON', { carton, pagado: estaPagado });
         } else {
-            console.log(`❌ Cartón ${data.id} NO encontrado.`);
             socket.emit('ERROR_CARTON', { mensaje: 'Cartón no encontrado.' });
         }
     });
@@ -96,13 +97,16 @@ io.on('connection', (socket) => {
     socket.on('JUGADOR_PAUSA', (data) => io.emit('ADMIN_ALERTA_PAUSA', data));
     socket.on('JUGADOR_BINGO', (data) => io.emit('ADMIN_ALERTA_BINGO', data));
 
+    // --- MEJORA: COMPARA TEXTOS EXACTOS ---
     socket.on('GESTION_TOGGLE_PAGO', (data) => {
         const gestion = getGestion();
-        const registro = gestion.find(g => g.cartones.includes(data.cartonId));
+        const targetId = String(data.cartonId).toUpperCase();
+        const registro = gestion.find(g => g.cartones.some(c => String(c).toUpperCase() === targetId));
+        
         if (registro) {
             registro.pagado = data.pagado;
             saveGestion(gestion);
-            io.emit('CARTON_ACTIVADO', { cartonId: data.cartonId, pagado: data.pagado });
+            io.emit('CARTON_ACTIVADO', { cartonId: targetId, pagado: data.pagado });
             io.emit('GESTION_NUEVO_REGISTRO', gestion); 
         }
     });

@@ -97,6 +97,19 @@
             cartonesCargados[msg.carton.id] = { id: msg.carton.id, grid: msg.carton.grid, marcadosManual: new Set() };
         }
         actualizarListaIngreso();
+        
+        // --- AQUÍ EL BOMBILLO SE ACTUALIZA APENAS EL JUGADOR ENTRA ---
+        const ind = document.getElementById('paymentIndicator');
+        const btnPago = document.getElementById('btnPagar');
+        if (msg.pagado) {
+            ind.style.background = 'var(--success)'; 
+            ind.style.boxShadow = '0 0 15px var(--success)';
+            if (btnPago) btnPago.style.display = 'none';
+        } else {
+            ind.style.background = 'red'; 
+            ind.style.boxShadow = '0 0 15px red';
+            if (btnPago) btnPago.style.display = 'block';
+        }
     });
 
     socket.on('NUEVA_BOLA', (msg) => {
@@ -115,14 +128,21 @@
     socket.on('ERROR_CARTON', (msg) => alert(msg.mensaje));
 
     socket.on('CARTON_ACTIVADO', (data) => {
-        if (cartonesCargados[data.cartonId]) {
-            const ind = document.getElementById('paymentIndicator'), btnPago = document.getElementById('btnPagar');
+        const targetId = String(data.cartonId).toUpperCase();
+        const idsCargados = Object.keys(cartonesCargados).map(id => String(id).toUpperCase());
+
+        if (idsCargados.includes(targetId)) {
+            const ind = document.getElementById('paymentIndicator');
+            const btnPago = document.getElementById('btnPagar');
+            
             if (data.pagado) {
-                ind.style.background = 'var(--success)'; ind.style.boxShadow = '0 0 15px var(--success)';
+                ind.style.background = 'var(--success)'; 
+                ind.style.boxShadow = '0 0 15px var(--success)';
                 if(btnPago) btnPago.style.display = 'none';
                 alert(`✅ ¡Tu cartón ID: ${data.cartonId} ha sido activado para jugar!`);
             } else {
-                ind.style.background = 'red'; ind.style.boxShadow = '0 0 15px red';
+                ind.style.background = 'red'; 
+                ind.style.boxShadow = '0 0 15px red';
                 if(btnPago) btnPago.style.display = 'block';
             }
         }
@@ -179,7 +199,6 @@
         });
     }
 
-    // --- AQUÍ ESTÁ LA CORRECCIÓN DEL BOTÓN ---
     function cambiarModo(modo) {
         modoJuego = modo;
         const btnManual = document.getElementById('btnModoManual');
@@ -188,13 +207,11 @@
         if (modo === 'manual') {
             btnManual.className = 'mode-btn mode-manual';
             btnAuto.className = 'mode-btn mode-auto';
-            // Limpiamos los estilos que el modo Auto dejó pegados
             btnManual.removeAttribute('style');
             btnAuto.removeAttribute('style');
         } else {
             btnManual.className = 'mode-btn mode-auto';
             btnAuto.className = 'mode-btn mode-manual';
-            // Aplicamos los colores del Auto
             btnAuto.style.background = 'var(--success)';
             btnAuto.style.color = '#000';
             btnManual.style.background = 'transparent';
