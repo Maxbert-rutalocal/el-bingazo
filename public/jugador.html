@@ -179,18 +179,26 @@
         });
     }
 
+    // --- AQUÍ ESTÁ LA CORRECCIÓN DEL BOTÓN ---
     function cambiarModo(modo) {
         modoJuego = modo;
-        const btnManual = document.getElementById('btnModoManual'), btnAuto = document.getElementById('btnModoAuto');
+        const btnManual = document.getElementById('btnModoManual');
+        const btnAuto = document.getElementById('btnModoAuto');
+        
         if (modo === 'manual') {
             btnManual.className = 'mode-btn mode-manual';
             btnAuto.className = 'mode-btn mode-auto';
+            // Limpiamos los estilos que el modo Auto dejó pegados
+            btnManual.removeAttribute('style');
+            btnAuto.removeAttribute('style');
         } else {
             btnManual.className = 'mode-btn mode-auto';
             btnAuto.className = 'mode-btn mode-manual';
+            // Aplicamos los colores del Auto
             btnAuto.style.background = 'var(--success)';
             btnAuto.style.color = '#000';
             btnManual.style.background = 'transparent';
+            btnManual.style.color = '#a0a0b0';
         }
         redibujarCartonActual();
     }
