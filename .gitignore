@@ -1,8 +1,8 @@
 # Dependencias de Node
 node_modules/
 
-# Archivos de la base de datos local
-data/
+# Archivos de la base de datos local (solo ignoramos las ventas, no los cartones)
+data/gestion.json
 
 # Archivos del sistema operativo
 .DS_Store
