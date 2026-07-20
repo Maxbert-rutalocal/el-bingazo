@@ -32,6 +32,8 @@
         .cell.marked { background: var(--success); color: #fff; border-bottom-color: #1b8a7f; }
         .cell.free-space { background: var(--danger); color: #fff; font-size: 11px; font-weight: 900; }
         .status-bar { font-size: 15px; font-weight: bold; color: var(--primary); margin-top: 10px; }
+        
+        .btn-limpiar { background: transparent; color: #666; border: none; text-decoration: underline; margin-top: 15px; font-size: 12px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -45,6 +47,9 @@
         <button class="btn-add" onclick="solicitarCartonServidor()">VINCULAR MI CARTÓN ➕</button>
         <div id="listaMisIds" style="margin-top:20px; text-align:left; color:#a0a0b0;"></div>
         <button id="btnEmpezarJuego" class="btn-add" style="background:var(--success); display:none;" onclick="mostrarPantallaJuego()">IR A JUGAR EN VIVO ➡️</button>
+        
+        <!-- Botón para borrar memoria si prestas el celular -->
+        <button class="btn-limpiar" onclick="limpiarMemoriaCelular()">Soy otro jugador (Borrar mis datos guardados)</button>
     </div>
 
     <div id="viewGame" style="display: none;">
@@ -86,6 +91,42 @@
     let nombreJugador = "", telefonoJugador = "";
     let modoJuego = 'manual';
 
+    // --- MAGIA 1: RECUPERAR MEMORIA AL ABRIR LA PÁGINA ---
+    window.onload = () => {
+        const guardado = localStorage.getItem('bingazo_datos');
+        if (guardado) {
+            const datos = JSON.parse(guardado);
+            if (datos.nombre && datos.tel && datos.cartones && datos.cartones.length > 0) {
+                nombreJugador = datos.nombre;
+                telefonoJugador = datos.tel;
+                document.getElementById('nombreInput').value = nombreJugador;
+                document.getElementById('telefonoInput').value = telefonoJugador;
+                
+                // Le pedimos al servidor que nos devuelva nuestros cartones
+                datos.cartones.forEach(id => {
+                    socket.emit('SOLICITAR_CARTON', { id, nombre: nombreJugador, tel: telefonoJugador });
+                });
+            }
+        }
+    };
+
+    // --- MAGIA 2: FUNCIÓN PARA GUARDAR EN EL CELULAR ---
+    function guardarEnMemoriaCelular() {
+        const datosGuardar = { nombre: nombreJugador, tel: telefonoJugador, cartones: [], marcados: {} };
+        Object.keys(cartonesCargados).forEach(id => {
+            datosGuardar.cartones.push(id);
+            datosGuardar.marcados[id] = Array.from(cartonesCargados[id].marcadosManual);
+        });
+        localStorage.setItem('bingazo_datos', JSON.stringify(datosGuardar));
+    }
+
+    function limpiarMemoriaCelular() {
+        if(confirm("¿Seguro que quieres borrar tus datos de este dispositivo?")) {
+            localStorage.removeItem('bingazo_datos');
+            location.reload();
+        }
+    }
+
     socket.on('ESTADO_INICIAL', (payload) => {
         bolasCantadasGlobal.clear();
         if (payload?.data?.bolasSacadas) payload.data.bolasSacadas.forEach(b => bolasCantadasGlobal.add(Number(b)));
@@ -95,10 +136,19 @@
     socket.on('ENTREGAR_CARTON', (msg) => {
         if (!cartonesCargados[msg.carton.id]) {
             cartonesCargados[msg.carton.id] = { id: msg.carton.id, grid: msg.carton.grid, marcadosManual: new Set() };
+            
+            // Restaurar las marcas manuales que se guardaron en la memoria
+            const guardado = localStorage.getItem('bingazo_datos');
+            if (guardado) {
+                const datos = JSON.parse(guardado);
+                if (datos.marcados && datos.marcados[msg.carton.id]) {
+                    datos.marcados[msg.carton.id].forEach(num => cartonesCargados[msg.carton.id].marcadosManual.add(num));
+                }
+            }
         }
         actualizarListaIngreso();
+        guardarEnMemoriaCelular(); // Guardamos cada vez que recibimos un cartón
         
-        // --- AQUÍ EL BOMBILLO SE ACTUALIZA APENAS EL JUGADOR ENTRA ---
         const ind = document.getElementById('paymentIndicator');
         const btnPago = document.getElementById('btnPagar');
         if (msg.pagado) {
@@ -121,6 +171,7 @@
     socket.on('REINICIAR_JUEGO', () => {
         bolasCantadasGlobal.clear();
         Object.keys(cartonesCargados).forEach(id => cartonesCargados[id].marcadosManual.clear());
+        guardarEnMemoriaCelular(); // Actualizamos memoria para borrar marcas viejas
         document.getElementById('liveStatus').textContent = "🔄 Juego reiniciado.";
         redibujarCartonActual();
     });
@@ -157,8 +208,8 @@
         if (cartonesCargados[id]) return alert("Este cartón ya está vinculado.");
 
         nombreJugador = nombre; telefonoJugador = tel;
-        socket.emit('JUGADOR_REGISTRARSE', { nombre, tel, cartonId: id });
-        socket.emit('SOLICITAR_CARTON', { id });
+        // Ahora enviamos todo junto para que el servidor verifique
+        socket.emit('SOLICITAR_CARTON', { id, nombre, tel });
         document.getElementById('cartonIdInput').value = "";
     }
 
@@ -240,6 +291,7 @@
             cell.onclick = () => {
                 if (num === 0) return;
                 carton.marcadosManual.has(num) ? carton.marcadosManual.delete(num) : carton.marcadosManual.add(num);
+                guardarEnMemoriaCelular(); // Guardamos la marca manual instantáneamente
                 redibujarCartonActual();
             };
             display.appendChild(cell);

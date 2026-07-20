@@ -14,7 +14,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// --- SOLUCIÓN AL PROBLEMA WINDOWS VS LINUX ---
+// --- CARPETAS LINUX / WINDOWS ---
 let dataDir = path.join(__dirname, 'data');
 if (fs.existsSync(path.join(__dirname, 'Data'))) {
     dataDir = path.join(__dirname, 'Data');
@@ -68,36 +68,44 @@ io.on('connection', (socket) => {
         io.emit('RESETEO_GLOBAL_VENTAS'); 
     });
 
-    socket.on('JUGADOR_REGISTRARSE', (data) => {
-        const gestion = getGestion();
-        const existe = gestion.find(g => g.cartones.includes(data.cartonId));
-        if (!existe) {
-            gestion.push({ nombre: data.nombre, tel: data.tel, cartones: [data.cartonId], pagado: false });
-            saveGestion(gestion);
-        }
-        io.emit('GESTION_NUEVO_REGISTRO', getGestion()); 
-    });
-
-    // --- MEJORA: AHORA REVISA SI ESTÁ PAGADO AL BUSCAR EL CARTÓN ---
+    // --- MEJORA: REGISTRO ÚNICO Y ANTI-ROBO ---
     socket.on('SOLICITAR_CARTON', (data) => {
         const idBuscado = String(data.id).toUpperCase();
         const carton = cartonesGlobal.find(c => String(c.id).toUpperCase() === idBuscado);
         
-        if (carton) {
-            const gestion = getGestion();
-            const registro = gestion.find(g => g.cartones.some(cId => String(cId).toUpperCase() === idBuscado));
-            const estaPagado = registro ? registro.pagado : false;
+        if (!carton) {
+            return socket.emit('ERROR_CARTON', { mensaje: 'Cartón no encontrado.' });
+        }
 
-            socket.emit('ENTREGAR_CARTON', { carton, pagado: estaPagado });
+        const gestion = getGestion();
+        let registroDueño = gestion.find(g => g.cartones.some(cId => String(cId).toUpperCase() === idBuscado));
+
+        if (registroDueño) {
+            // Si el cartón ya tiene dueño, verificamos si es la MISMA persona (comparamos teléfono)
+            if (String(registroDueño.tel).trim() !== String(data.tel).trim()) {
+                return socket.emit('ERROR_CARTON', { mensaje: `❌ ¡El cartón ${idBuscado} ya fue elegido por otra persona! Por favor elige otro número.` });
+            }
+            // Si es la misma persona (refrescó la página), se lo entregamos de nuevo
+            socket.emit('ENTREGAR_CARTON', { carton, pagado: registroDueño.pagado });
         } else {
-            socket.emit('ERROR_CARTON', { mensaje: 'Cartón no encontrado.' });
+            // Si el cartón está libre, lo registramos a su nombre
+            let registroJugador = gestion.find(g => String(g.tel).trim() === String(data.tel).trim());
+            
+            if (registroJugador) {
+                registroJugador.cartones.push(idBuscado); // Le agregamos un cartón más a sus compras
+            } else {
+                gestion.push({ nombre: data.nombre, tel: data.tel, cartones: [idBuscado], pagado: false });
+            }
+            
+            saveGestion(gestion);
+            io.emit('GESTION_NUEVO_REGISTRO', gestion); 
+            socket.emit('ENTREGAR_CARTON', { carton, pagado: false });
         }
     });
 
     socket.on('JUGADOR_PAUSA', (data) => io.emit('ADMIN_ALERTA_PAUSA', data));
     socket.on('JUGADOR_BINGO', (data) => io.emit('ADMIN_ALERTA_BINGO', data));
 
-    // --- MEJORA: COMPARA TEXTOS EXACTOS ---
     socket.on('GESTION_TOGGLE_PAGO', (data) => {
         const gestion = getGestion();
         const targetId = String(data.cartonId).toUpperCase();
