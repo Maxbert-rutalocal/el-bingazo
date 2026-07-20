@@ -14,7 +14,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// --- SEGURIDAD DE ARCHIVOS ---
 const dataDir = path.join(__dirname, 'data');
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
 const gestionPath = path.join(dataDir, 'gestion.json');
@@ -24,7 +23,16 @@ if (!fs.existsSync(cartonesPath)) fs.writeFileSync(cartonesPath, '[]');
 
 function getGestion() { try { return JSON.parse(fs.readFileSync(gestionPath, 'utf-8')); } catch (e) { return []; } }
 function saveGestion(data) { fs.writeFileSync(gestionPath, JSON.stringify(data, null, 2)); }
-function getCartones() { try { return JSON.parse(fs.readFileSync(cartonesPath, 'utf-8')); } catch (e) { return []; } }
+
+// --- MEGA MEJORA: CARGAR CARTONES EN MEMORIA UNA SOLA VEZ ---
+let cartonesGlobal = [];
+try {
+    console.log("⏳ Cargando base de datos de cartones (3.4MB)...");
+    cartonesGlobal = JSON.parse(fs.readFileSync(cartonesPath, 'utf-8'));
+    console.log(`✅ ¡Éxito! Se cargaron ${cartonesGlobal.length} cartones en la memoria rápida.`);
+} catch (e) {
+    console.error("❌ Error al cargar cartones:", e);
+}
 
 let bolasSacadasGlobal = [];
 
@@ -32,7 +40,6 @@ io.on('connection', (socket) => {
     socket.emit('ESTADO_INICIAL', { data: { bolasSacadas: bolasSacadasGlobal } });
     socket.emit('GESTION_NUEVO_REGISTRO', getGestion()); 
 
-    // Eventos del Admin
     socket.on('ADMIN_SACAR_BOLA', (data) => {
         bolasSacadasGlobal.push(data.bola);
         io.emit('NUEVA_BOLA', data);
@@ -47,14 +54,12 @@ io.on('connection', (socket) => {
         io.emit('GESTION_REGISTRAR_GANADOR_AUTO', data);
     });
 
-    // --- REINICIO TOTAL DE VENTAS ---
     socket.on('ADMIN_RESET_VENTAS', () => {
         saveGestion([]); 
         io.emit('GESTION_NUEVO_REGISTRO', []); 
         io.emit('RESETEO_GLOBAL_VENTAS'); 
     });
 
-    // Eventos del Jugador
     socket.on('JUGADOR_REGISTRARSE', (data) => {
         const gestion = getGestion();
         const existe = gestion.find(g => g.cartones.includes(data.cartonId));
@@ -65,17 +70,24 @@ io.on('connection', (socket) => {
         io.emit('GESTION_NUEVO_REGISTRO', getGestion()); 
     });
 
+    // --- NUEVO BUSCADOR TURBO ---
     socket.on('SOLICITAR_CARTON', (data) => {
-        const cartones = getCartones();
-        const carton = cartones.find(c => String(c.id).toUpperCase() === String(data.id).toUpperCase());
-        if (carton) socket.emit('ENTREGAR_CARTON', { carton });
-        else socket.emit('ERROR_CARTON', { mensaje: 'Cartón no encontrado.' });
+        console.log(`🔍 Un jugador está buscando el cartón ID: ${data.id}`);
+        
+        const carton = cartonesGlobal.find(c => String(c.id).toUpperCase() === String(data.id).toUpperCase());
+        
+        if (carton) {
+            console.log(`✅ Cartón ${data.id} encontrado y enviado.`);
+            socket.emit('ENTREGAR_CARTON', { carton });
+        } else {
+            console.log(`❌ Cartón ${data.id} NO encontrado.`);
+            socket.emit('ERROR_CARTON', { mensaje: 'Cartón no encontrado.' });
+        }
     });
 
     socket.on('JUGADOR_PAUSA', (data) => io.emit('ADMIN_ALERTA_PAUSA', data));
     socket.on('JUGADOR_BINGO', (data) => io.emit('ADMIN_ALERTA_BINGO', data));
 
-    // Eventos de Gestión
     socket.on('GESTION_TOGGLE_PAGO', (data) => {
         const gestion = getGestion();
         const registro = gestion.find(g => g.cartones.includes(data.cartonId));
@@ -88,6 +100,5 @@ io.on('connection', (socket) => {
     });
 });
 
-// --- CONFIGURACIÓN PARA RENDER ---
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`🚀 Servidor activo en puerto ${PORT}`));
