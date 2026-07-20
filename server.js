@@ -14,20 +14,29 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-const dataDir = path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir);
+// --- SOLUCIÓN AL PROBLEMA WINDOWS VS LINUX (MAYÚSCULAS/MINÚSCULAS) ---
+let dataDir = path.join(__dirname, 'data');
+if (fs.existsSync(path.join(__dirname, 'Data'))) {
+    dataDir = path.join(__dirname, 'Data'); // Si la carpeta está con D mayúscula, usa esa
+} else if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir);
+}
+
 const gestionPath = path.join(dataDir, 'gestion.json');
 if (!fs.existsSync(gestionPath)) fs.writeFileSync(gestionPath, '[]');
-const cartonesPath = path.join(dataDir, 'cartones.json');
+
+let cartonesPath = path.join(dataDir, 'cartones.json');
+if (!fs.existsSync(cartonesPath) && fs.existsSync(path.join(dataDir, 'Cartones.json'))) {
+    cartonesPath = path.join(dataDir, 'Cartones.json'); // Por si el archivo tiene C mayúscula
+}
 if (!fs.existsSync(cartonesPath)) fs.writeFileSync(cartonesPath, '[]');
 
 function getGestion() { try { return JSON.parse(fs.readFileSync(gestionPath, 'utf-8')); } catch (e) { return []; } }
 function saveGestion(data) { fs.writeFileSync(gestionPath, JSON.stringify(data, null, 2)); }
 
-// --- MEGA MEJORA: CARGAR CARTONES EN MEMORIA UNA SOLA VEZ ---
 let cartonesGlobal = [];
 try {
-    console.log("⏳ Cargando base de datos de cartones (3.4MB)...");
+    console.log(`⏳ Buscando cartones en: ${cartonesPath}`);
     cartonesGlobal = JSON.parse(fs.readFileSync(cartonesPath, 'utf-8'));
     console.log(`✅ ¡Éxito! Se cargaron ${cartonesGlobal.length} cartones en la memoria rápida.`);
 } catch (e) {
@@ -70,7 +79,6 @@ io.on('connection', (socket) => {
         io.emit('GESTION_NUEVO_REGISTRO', getGestion()); 
     });
 
-    // --- NUEVO BUSCADOR TURBO ---
     socket.on('SOLICITAR_CARTON', (data) => {
         console.log(`🔍 Un jugador está buscando el cartón ID: ${data.id}`);
         
